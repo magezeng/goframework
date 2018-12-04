@@ -11,7 +11,7 @@ import (
 var instance *DO.Configuration
 
 // GetInstance 返回配置实例
-func GetInstance() *DO.Configuration {
+func GetInstance() DO.Configuration {
 	if instance == nil {
 		configFileName := getConfigFileNameByMode()
 		file := Utils.OpenLocalFile(configFileName)
@@ -24,7 +24,7 @@ func GetInstance() *DO.Configuration {
 			Errors.Raise(err, Errors.IOErrCode)
 		}
 	}
-	return instance
+	return *instance
 }
 
 // 从环境变量中决定应该使用哪一个配置文件

@@ -15,4 +15,7 @@ type Configuration struct {
 		SavePath   string `json:"savePath"`
 		TimeFormat string `json:"timeFormat"`
 	}
+	Collector struct {
+		URL string `json:"url"`
+	}
 }
