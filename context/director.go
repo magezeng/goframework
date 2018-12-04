@@ -12,7 +12,7 @@ type director struct {
 func (dr *director) defaultBuild() (context Context) {
 	env := os.Getenv("env")
 	if env == "" {
-		env = "dev"
+		env = "test"
 	}
 	// 先设置环境变量
 	dr.Builder.SetEnv(env)
