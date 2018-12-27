@@ -1,4 +1,4 @@
-package mapstructure
+package MapStructure
 
 import (
 	"fmt"
