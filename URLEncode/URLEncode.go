@@ -22,8 +22,12 @@ func toString(value interface{}) (stringValue string) {
 		} else {
 			stringValue = "false"
 		}
+	case string:
+		stringValue = value.(string)
+	case int64:
+		stringValue = strconv.FormatInt(value.(int64), 10)
 	case int:
-		stringValue = string(value.(int))
+		stringValue = strconv.Itoa(value.(int))
 	case float32:
 		stringValue = strconv.FormatFloat(float64(value.(float32)), 'f', 20, 64)
 	case float64:
