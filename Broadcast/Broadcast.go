@@ -25,7 +25,7 @@ func (broadcast *Broadcast) waitMessage() {
 		for true {
 			content := <-broadcast.messageWaitChannel
 			for _, element := range broadcast.receivers {
-				element.reveiceChannel <- content
+				element.ReveiceChannel <- content
 			}
 		}
 	}(broadcast)
@@ -40,7 +40,9 @@ func (broadcast *Broadcast) PostMessageAndData(message string, data interface{})
 }
 
 func (broadcast *Broadcast) AddReceiver() BroadcastReceiver {
-	tempUUID := uuid.NewV1().String()
+
+	UUID, _ := uuid.NewV4()
+	tempUUID := UUID.String()
 	receiver := BroadcastReceiver{tempUUID, make(chan BroadcastContent)}
 	broadcast.receivers[tempUUID] = receiver
 	return receiver
