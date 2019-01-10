@@ -54,5 +54,7 @@ func (broadcast *Broadcast) AddReceiver() BroadcastReceiver {
 	return receiver
 }
 func (broadcast *Broadcast) RemoveReceiver(receiver BroadcastReceiver) {
+	broadcast.receiversRWMutex.Lock()
 	delete(broadcast.receivers, receiver.id)
+	broadcast.receiversRWMutex.Unlock()
 }
