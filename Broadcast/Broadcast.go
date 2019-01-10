@@ -2,6 +2,7 @@ package Broadcast
 
 import (
 	"github.com/satori/go.uuid"
+	"sync"
 )
 
 type BroadcastContent struct {
@@ -12,10 +13,11 @@ type BroadcastContent struct {
 type Broadcast struct {
 	messageWaitChannel chan BroadcastContent
 	receivers          map[string]BroadcastReceiver
+	receiversRWMutex   *sync.RWMutex
 }
 
 func NewBroadcast() *Broadcast {
-	broadcast := &Broadcast{make(chan BroadcastContent), map[string]BroadcastReceiver{}}
+	broadcast := &Broadcast{make(chan BroadcastContent), map[string]BroadcastReceiver{}, new(sync.RWMutex)}
 	broadcast.waitMessage()
 	return broadcast
 }
@@ -24,9 +26,11 @@ func (broadcast *Broadcast) waitMessage() {
 	go func(broadcast *Broadcast) {
 		for true {
 			content := <-broadcast.messageWaitChannel
+			broadcast.receiversRWMutex.RLock()
 			for _, element := range broadcast.receivers {
 				element.ReveiceChannel <- content
 			}
+			broadcast.receiversRWMutex.RUnlock()
 		}
 	}(broadcast)
 }
@@ -44,7 +48,9 @@ func (broadcast *Broadcast) AddReceiver() BroadcastReceiver {
 	UUID, _ := uuid.NewV4()
 	tempUUID := UUID.String()
 	receiver := BroadcastReceiver{tempUUID, make(chan BroadcastContent)}
+	broadcast.receiversRWMutex.Lock()
 	broadcast.receivers[tempUUID] = receiver
+	broadcast.receiversRWMutex.Unlock()
 	return receiver
 }
 func (broadcast *Broadcast) RemoveReceiver(receiver BroadcastReceiver) {
