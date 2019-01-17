@@ -57,6 +57,8 @@ func (collect *BaseDataCollect) ConnectToService() {
 			collect.handleData()
 			collect.CollectData()
 			collect.Palpitate()
+		} else {
+			fmt.Println(err)
 		}
 		collect.aspectDelegate.AfterConnectToService(err == nil)
 	}()
