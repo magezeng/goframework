@@ -20,6 +20,8 @@ type BaseDataCollect struct {
 	path    string
 	connect *websocket.Conn
 
+	IsPrintProcess bool
+
 	//连接使用互斥锁，go的websockets链接只能同时发一个数据  用这个保证不会同时两个数据在发送
 	connectMutex   *sync.Mutex
 	receiveChannel chan interface{}
@@ -58,7 +60,9 @@ func (collect *BaseDataCollect) ConnectToService() {
 			collect.CollectData()
 			collect.Palpitate()
 		} else {
-			fmt.Println(err)
+			if collect.IsPrintProcess {
+				fmt.Println(err)
+			}
 		}
 		collect.aspectDelegate.AfterConnectToService(err == nil)
 	}()
@@ -92,7 +96,9 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 	} else {
 		jsBytes, err = json.Marshal(data)
 	}
-	fmt.Println("发送了", string(jsBytes))
+	if collect.IsPrintProcess {
+		fmt.Println("发送了", string(jsBytes))
+	}
 	if err != nil {
 		return
 	}
@@ -189,7 +195,9 @@ func (collect *BaseDataCollect) CollectData() {
 					}
 				}
 				if tempText != nil {
-					fmt.Println("接收到", string(tempText))
+					if collect.IsPrintProcess {
+						fmt.Println("接收到", string(tempText))
+					}
 					collect.receiveChannel <- tempText
 				}
 			case <-tempCloseReceiver.ReveiceChannel:
