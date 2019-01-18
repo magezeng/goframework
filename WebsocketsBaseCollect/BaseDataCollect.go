@@ -261,6 +261,7 @@ func (collect *BaseDataCollect) handleData() {
 				fmt.Println("-----------------2", collect.aspectDelegate.HandleData)
 				fmt.Println("-----------------3", obj)
 				collect.aspectDelegate.HandleData(obj)
+				fmt.Println("已经调用了上层")
 
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheReciveTimeOut()):
 				//case <-time.After(time.Millisecond * 50):
