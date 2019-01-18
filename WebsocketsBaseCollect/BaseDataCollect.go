@@ -256,12 +256,13 @@ func (collect *BaseDataCollect) handleData() {
 				}
 				//将业务Map数据通过代理传递到外层
 
-				fmt.Printf("%p", collect.aspectDelegate)
+				fmt.Printf("%p\n", collect.aspectDelegate)
 				fmt.Println("-----------------1", collect.aspectDelegate)
 				fmt.Println("-----------------2", collect.aspectDelegate.HandleData)
 				fmt.Println("-----------------3", obj)
 				collect.aspectDelegate.HandleData(obj)
 				fmt.Println("已经调用了上层")
+				fmt.Println("\n\n\n\n")
 
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheReciveTimeOut()):
 				//case <-time.After(time.Millisecond * 50):
