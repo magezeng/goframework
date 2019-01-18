@@ -253,6 +253,9 @@ func (collect *BaseDataCollect) handleData() {
 					continue
 				}
 				//将业务Map数据通过代理传递到外层
+				fmt.Println(collect.aspectDelegate)
+				fmt.Println(collect.aspectDelegate.HandleData)
+				fmt.Println(obj)
 				collect.aspectDelegate.HandleData(obj)
 
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheReciveTimeOut()):
