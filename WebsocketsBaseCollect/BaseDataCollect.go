@@ -34,6 +34,8 @@ type BaseDataCollect struct {
 }
 
 func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate CollectAspectInterface) {
+	fmt.Println("WebsocketsBaseCollect aspectDelegate.HandleData ", aspectDelegate.HandleData)
+	fmt.Println("WebsocketsBaseCollect collect.HandleData ", collect.HandleData)
 	collect.url = url
 	collect.path = path
 	collect.connectMutex = new(sync.Mutex)
