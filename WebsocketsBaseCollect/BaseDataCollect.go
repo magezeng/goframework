@@ -261,7 +261,8 @@ func (collect *BaseDataCollect) handleData() {
 				fmt.Println("-----------------2", collect.aspectDelegate.HandleData)
 				fmt.Println("-----------------3", obj)
 				collect.aspectDelegate.HandleData(obj)
-				fmt.Println("已经调用了上层")
+				fmt.Println("已经调用了上层", a)
+				a++
 				fmt.Println("\n\n\n\n")
 
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheReciveTimeOut()):
@@ -276,6 +277,10 @@ func (collect *BaseDataCollect) handleData() {
 		}
 	}(collect)
 }
+
+var (
+	a = 0
+)
 
 func gzipDecode2(in []byte) ([]byte, error) {
 	reader := flate.NewReader(bytes.NewReader(in))
