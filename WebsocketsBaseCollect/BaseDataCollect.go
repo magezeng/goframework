@@ -151,6 +151,7 @@ func (collect *BaseDataCollect) CollectData() {
 			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
 				if err, isError := ee.(error); isError {
+					fmt.Println("CollectData 抛出异常")
 					collect.ThrowAbnormal(err)
 				}
 			}
@@ -226,6 +227,7 @@ func (collect *BaseDataCollect) handleData() {
 			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
 				if err, isError := ee.(error); isError {
+					fmt.Println("handleData抛出异常")
 					collect.ThrowAbnormal(err)
 				}
 			}
