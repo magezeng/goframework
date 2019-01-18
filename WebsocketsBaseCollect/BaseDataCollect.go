@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
+	"runtime/debug"
 	"sync"
 	"time"
 	"tipu.com/go-framework/Broadcast"
@@ -150,6 +151,7 @@ func (collect *BaseDataCollect) CollectData() {
 			//此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
 			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
+				debug.PrintStack()
 				if err, isError := ee.(error); isError {
 					fmt.Println("CollectData 抛出异常")
 					collect.ThrowAbnormal(err)
@@ -226,6 +228,7 @@ func (collect *BaseDataCollect) handleData() {
 			//此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
 			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
+				debug.PrintStack()
 				if err, isError := ee.(error); isError {
 					fmt.Println("handleData抛出异常")
 					collect.ThrowAbnormal(err)
