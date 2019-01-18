@@ -34,8 +34,6 @@ type BaseDataCollect struct {
 }
 
 func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate CollectAspectInterface) {
-	fmt.Println("WebsocketsBaseCollect aspectDelegate.HandleData ", aspectDelegate.HandleData)
-	fmt.Println("WebsocketsBaseCollect collect.HandleData ", collect.handleData)
 	collect.url = url
 	collect.path = path
 	collect.connectMutex = new(sync.Mutex)
@@ -255,15 +253,7 @@ func (collect *BaseDataCollect) handleData() {
 					continue
 				}
 				//将业务Map数据通过代理传递到外层
-
-				fmt.Printf("%p\n", collect.aspectDelegate)
-				fmt.Println("-----------------1", collect.aspectDelegate)
-				fmt.Println("-----------------2", collect.aspectDelegate.HandleData)
-				fmt.Println("-----------------3", obj)
 				collect.aspectDelegate.HandleData(obj)
-				fmt.Println("已经调用了上层", a)
-				a++
-				fmt.Println("\n\n\n\n")
 
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheReciveTimeOut()):
 				//case <-time.After(time.Millisecond * 50):
@@ -277,10 +267,6 @@ func (collect *BaseDataCollect) handleData() {
 		}
 	}(collect)
 }
-
-var (
-	a = 0
-)
 
 func gzipDecode2(in []byte) ([]byte, error) {
 	reader := flate.NewReader(bytes.NewReader(in))
