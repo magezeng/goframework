@@ -28,7 +28,9 @@ func (broadcast *Broadcast) waitMessage() {
 			content := <-broadcast.messageWaitChannel
 			broadcast.receiversRWMutex.RLock()
 			for _, element := range broadcast.receivers {
-				element.ReveiceChannel <- content
+				go func(){
+					element.ReveiceChannel <- content
+				}()
 			}
 			broadcast.receiversRWMutex.RUnlock()
 		}
