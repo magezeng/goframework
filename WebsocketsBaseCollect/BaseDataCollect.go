@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"runtime/debug"
 	"sync"
 	"time"
 	"tipu.com/go-framework/Broadcast"
+	"tipu.com/go-framework/Logger"
 )
 
 type BaseDataCollect struct {
@@ -69,7 +69,7 @@ func (collect *BaseDataCollect) ConnectToService() {
 	}()
 
 	tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
-	log.Printf("发起链接 %s", tempURL.String())
+	Logger.Info("发起链接 %s", tempURL.String())
 
 	connect, _, err := websocket.DefaultDialer.Dial(tempURL.String(), nil)
 	collect.connect = connect
@@ -98,7 +98,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 		jsBytes, err = json.Marshal(data)
 	}
 	if collect.IsPrintProcess {
-		fmt.Println("发送了", string(jsBytes))
+		Logger.Info("发送了", string(jsBytes))
 	}
 	if err != nil {
 		return
@@ -110,7 +110,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 	for i := 0; i < collect.aspectDelegate.GetWebsocketsSendDataMaxRetry(); i++ {
 		err = collect.connect.WriteMessage(websocket.TextMessage, jsBytes)
 		if err != nil {
-			fmt.Println("error3:", err)
+			Logger.Error("error3:", err)
 		} else {
 			break
 		}
@@ -136,7 +136,7 @@ func (collect *BaseDataCollect) Palpitate() {
 					_ = collect.SendData(collect.aspectDelegate.GetPingString())
 				}
 			case <-tempCloseReceiver.ReveiceChannel:
-				fmt.Println("收到断开连接的通知，呼吸发送线程退出")
+				Logger.Warn("收到断开连接的通知，呼吸发送线程退出")
 				return
 			}
 		}
@@ -153,7 +153,7 @@ func (collect *BaseDataCollect) CollectData() {
 			if ee := recover(); ee != nil {
 				debug.PrintStack()
 				if err, isError := ee.(error); isError {
-					fmt.Println("CollectData 抛出异常")
+					Logger.Error("CollectData 抛出异常")
 					collect.ThrowAbnormal(err)
 				}
 			}
@@ -199,12 +199,12 @@ func (collect *BaseDataCollect) CollectData() {
 				}
 				if tempText != nil {
 					if collect.IsPrintProcess {
-						fmt.Println("接收到", string(tempText))
+						Logger.Info("接收到", string(tempText))
 					}
 					collect.receiveChannel <- tempText
 				}
 			case <-tempCloseReceiver.ReveiceChannel:
-				fmt.Println("收到断开连接的通知，数据采集线程退出")
+				Logger.Warn("收到断开连接的通知，数据采集线程退出")
 				return
 			}
 		}
@@ -214,7 +214,7 @@ func (collect *BaseDataCollect) CollectData() {
 func (collect *BaseDataCollect) ThrowAbnormal(tempError error) {
 	//假如调用此函数的地方发生了异常   则调用代理的异常处理
 	if tempError != nil {
-		fmt.Println("抛出异常打印:", tempError)
+		Logger.Error("抛出异常打印:", tempError)
 		collect.aspectDelegate.OnAbnormal()
 	}
 	fmt.Println(tempError)
@@ -230,7 +230,7 @@ func (collect *BaseDataCollect) handleData() {
 			if ee := recover(); ee != nil {
 				debug.PrintStack()
 				if err, isError := ee.(error); isError {
-					fmt.Println("handleData抛出异常")
+					Logger.Error("handleData抛出异常")
 					collect.ThrowAbnormal(err)
 				}
 			}
@@ -249,7 +249,7 @@ func (collect *BaseDataCollect) handleData() {
 				//将业务数据转换为Map
 				obj, err := collect.aspectDelegate.ChangeResponseToStruct(responseBytes.([]byte))
 				if err != nil {
-					log.Println("error1:", err)
+					Logger.Error("error1:", err)
 					continue
 				}
 				//将业务Map数据通过代理传递到外层
