@@ -1,68 +1,71 @@
 package Logger
 
-import (
-	"fmt"
-	"log"
-	"os"
-	"sync"
-)
+import "time"
 
-// 日志级别
+type Logger struct {
+	// 日志写入器的列表
+	writerList []LogWriterInterface
+	// 级别
+	level int
+	// 时间格式
+	timeFormatter string
+}
+
 const (
-	DEBUG   = "DEBUG"
-	INFO    = "INFO"
-	WARNING = "WARN"
-	ERROR   = "ERROR"
+	DEBUG = iota
+	INFO
+	WARN
+	ERROR
 )
 
-var (
-	once        sync.Once
-	logInstance logT
-	defaultDir  = "./app.log"
-)
-
-type logT struct {
-	dir    string
-	logger *log.Logger
+// RegisterWriter 注册一个日志写入器
+func (l *Logger) AddWriter(writer LogWriterInterface) {
+	l.writerList = append(l.writerList, writer)
 }
 
-func getInstance() *logT {
-	once.Do(func() {
-		file, err := os.OpenFile(defaultDir, os.O_APPEND|os.O_CREATE, 0755)
-		if err != nil {
-			log.Fatalln("创建日志文件失败")
-		}
-		logInstance = logT{logger: log.New(file, "", log.LstdFlags)}
-	})
-	return &logInstance
+func (l *Logger) SetLevel(level int) {
+	l.level = level
 }
 
-// Debug 输出Debug级别日志
-func Debug(v ...interface{}) {
-	setPrefix(DEBUG)
-	getInstance().logger.Println(v)
+func (l *Logger) SetTimeFormatter(timeFormatter string) {
+	l.timeFormatter = timeFormatter
 }
 
-// Info 输出Info级别日志
-func Info(v ...interface{}) {
-	setPrefix(INFO)
-	getInstance().logger.Println(v)
+func (l *Logger) Debug(data interface{}) {
+	if l.level <= DEBUG {
+		l.log("[DEBUG] ", data)
+	}
 }
 
-// Warn 输出Warn级别日志
-func Warn(v ...interface{}) {
-	setPrefix(WARNING)
-	getInstance().logger.Println(v)
+func (l *Logger) Info(data interface{}) {
+	if l.level <= INFO {
+		l.log("[INFO] ", data)
+	}
 }
 
-// Error 输出Error级别日志
-func Error(v ...interface{}) {
-	setPrefix(ERROR)
-	getInstance().logger.Println(v)
+func (l *Logger) Warn(data interface{}) {
+	if l.level <= WARN {
+		l.log("[WARN] ", data)
+	}
 }
 
-// 设置日志每一行前方的日志标签
-func setPrefix(level string) {
-	logPrefix := fmt.Sprintf("[%s]", level)
-	getInstance().logger.SetPrefix(logPrefix)
+func (l *Logger) Error(data interface{}) {
+	if l.level <= ERROR {
+		l.log("[ERROR] ", data)
+	}
+}
+
+// Log 将一个data类型的数据写入日志
+func (l *Logger) log(prefix string, data interface{}) {
+	now := time.Now()
+	timeStr := now.Format(l.timeFormatter)
+	for _, writer := range l.writerList {
+		// 将日志输出到每一个写入器中
+		_ = writer.Write(timeStr+" "+prefix, data)
+	}
+}
+
+// NewLogger 创建日志的实例
+func NewLogger() *Logger {
+	return &Logger{level: DEBUG, timeFormatter: "2006-01-01 15:04:05"}
 }
