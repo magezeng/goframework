@@ -2,10 +2,10 @@ package utils
 
 import (
 	"bytes"
-	Errors "go-framework/errors"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -38,40 +38,47 @@ func createHTTPClient() *http.Client {
 	return client
 }
 
-// HTTPGet Get请求方式，返回字节流，现阶段有错直接抛
-func HTTPGet(url string) []byte {
-	req, err := http.NewRequest("GET", url, nil)
+// HTTPGet Get请求方式
+func HTTPGet(url url.URL) (body []byte, err error) {
+	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
-		Errors.Raise(err, Errors.NetErrCode)
+		return
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := httpClient.Do(req)
+	defer func() {
+		err = response.Body.Close()
+		return
+	}()
 	if err != nil && response == nil {
-		Errors.Raise(err, Errors.NetErrCode)
+		return
 	}
-	defer response.Body.Close()
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		Errors.Raise(err, Errors.ParseErrCode)
+		return
 	}
-	return body
+	return
 }
 
-// HTTPPost Post请求方式，返回字节流，现阶段有错直接抛
-func HTTPPost(url string, reqBody []byte) []byte {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+// HTTPPost Post请求方式，返回字节流
+func HTTPPost(url url.URL, reqBody []byte) (body []byte, err error) {
+	req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	response, err := client.Do(req)
+	defer func() {
+		err = response.Body.Close()
+		return
+	}()
 	if err != nil {
-		Errors.Raise(err, Errors.NetErrCode)
+		return
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+
+	body, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		Errors.Raise(err, Errors.ParseErrCode)
+		return
 	}
-	return body
+	return
 }

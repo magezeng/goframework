@@ -19,16 +19,19 @@ const (
 )
 
 // RegisterWriter 注册一个日志写入器
-func (l *Logger) AddWriter(writer LogWriterInterface) {
+func (l *Logger) AddWriter(writer LogWriterInterface) *Logger{
 	l.writerList = append(l.writerList, writer)
+	return l
 }
 
-func (l *Logger) SetLevel(level int) {
+func (l *Logger) SetLevel(level int) *Logger{
 	l.level = level
+	return l
 }
 
-func (l *Logger) SetTimeFormatter(timeFormatter string) {
+func (l *Logger) SetTimeFormatter(timeFormatter string) *Logger{
 	l.timeFormatter = timeFormatter
+	return l
 }
 
 func (l *Logger) Debug(data interface{}) {

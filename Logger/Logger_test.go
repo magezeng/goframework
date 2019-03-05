@@ -7,8 +7,6 @@ import (
 func TestLogger_Log(t *testing.T) {
 	l := NewLogger()
 	cw := NewLogConsoleWriter()
-	// 注册命令行写入器到日志器中
-	l.AddWriter(cw)
 	// 创建文件写入器
 	fw := NewLogFileWriter()
 	// 设置文件名
@@ -16,9 +14,7 @@ func TestLogger_Log(t *testing.T) {
 		t.Error(err.Error())
 		t.Fail()
 	}
-	// 注册文件写入器到日志器中
-	l.AddWriter(fw)
 	// 设置了error，只有error级别的可以输出
-	l.SetLevel(WARN)
-	l.Warn("This is a test")
+	// 注册文件写入器到日志器中
+	l.AddWriter(fw).AddWriter(cw).SetLevel(WARN).Warn("This is a test")
 }
