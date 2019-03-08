@@ -16,13 +16,13 @@ import (
 	"tipu.com/go-framework/Logger"
 )
 
+var logger = Logger.NewLogger().SetFileWriter("app.log")
+
 type BaseDataCollect struct {
-	url     string
-	path    string
-	connect *websocket.Conn
-
+	url            string
+	path           string
+	connect        *websocket.Conn
 	IsPrintProcess bool
-
 	//连接使用互斥锁，go的websockets链接只能同时发一个数据  用这个保证不会同时两个数据在发送
 	connectMutex   *sync.Mutex
 	receiveChannel chan interface{}
@@ -41,7 +41,6 @@ func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate Col
 
 	collect.closeBroadcast = Broadcast.NewBroadcast()
 	collect.closeWaitGroup = sync.WaitGroup{}
-
 }
 
 func (collect *BaseDataCollect) ConnectToService() {
@@ -69,7 +68,7 @@ func (collect *BaseDataCollect) ConnectToService() {
 	}()
 
 	tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
-	Logger.Info("发起链接 %s", tempURL.String())
+	logger.Info("发起链接: ", tempURL.String())
 
 	connect, _, err := websocket.DefaultDialer.Dial(tempURL.String(), nil)
 	collect.connect = connect
@@ -98,7 +97,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 		jsBytes, err = json.Marshal(data)
 	}
 	if collect.IsPrintProcess {
-		Logger.Info("发送了", string(jsBytes))
+		logger.Info("发送了", string(jsBytes))
 	}
 	if err != nil {
 		return
@@ -110,7 +109,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 	for i := 0; i < collect.aspectDelegate.GetWebsocketsSendDataMaxRetry(); i++ {
 		err = collect.connect.WriteMessage(websocket.TextMessage, jsBytes)
 		if err != nil {
-			Logger.Error("error3:", err)
+			logger.Error("error3:", err)
 		} else {
 			break
 		}
@@ -136,7 +135,7 @@ func (collect *BaseDataCollect) Palpitate() {
 					_ = collect.SendData(collect.aspectDelegate.GetPingString())
 				}
 			case <-tempCloseReceiver.ReveiceChannel:
-				Logger.Warn("收到断开连接的通知，呼吸发送线程退出")
+				logger.Warn("收到断开连接的通知，呼吸发送线程退出")
 				return
 			}
 		}
@@ -153,7 +152,7 @@ func (collect *BaseDataCollect) CollectData() {
 			if ee := recover(); ee != nil {
 				debug.PrintStack()
 				if err, isError := ee.(error); isError {
-					Logger.Error("CollectData 抛出异常")
+					logger.Error("CollectData 抛出异常")
 					collect.ThrowAbnormal(err)
 				}
 			}
@@ -199,12 +198,12 @@ func (collect *BaseDataCollect) CollectData() {
 				}
 				if tempText != nil {
 					if collect.IsPrintProcess {
-						Logger.Info("接收到", string(tempText))
+						logger.Info("接收到", string(tempText))
 					}
 					collect.receiveChannel <- tempText
 				}
 			case <-tempCloseReceiver.ReveiceChannel:
-				Logger.Warn("收到断开连接的通知，数据采集线程退出")
+				logger.Warn("收到断开连接的通知，数据采集线程退出")
 				return
 			}
 		}
@@ -214,7 +213,7 @@ func (collect *BaseDataCollect) CollectData() {
 func (collect *BaseDataCollect) ThrowAbnormal(tempError error) {
 	//假如调用此函数的地方发生了异常   则调用代理的异常处理
 	if tempError != nil {
-		Logger.Error("抛出异常打印:", tempError)
+		logger.Error("抛出异常打印:", tempError)
 		collect.aspectDelegate.OnAbnormal()
 	}
 	fmt.Println(tempError)
@@ -230,7 +229,7 @@ func (collect *BaseDataCollect) handleData() {
 			if ee := recover(); ee != nil {
 				debug.PrintStack()
 				if err, isError := ee.(error); isError {
-					Logger.Error("handleData抛出异常")
+					logger.Error("handleData抛出异常")
 					collect.ThrowAbnormal(err)
 				}
 			}
@@ -249,7 +248,7 @@ func (collect *BaseDataCollect) handleData() {
 				//将业务数据转换为Map
 				obj, err := collect.aspectDelegate.ChangeResponseToStruct(responseBytes.([]byte))
 				if err != nil {
-					Logger.Error("error1:", err)
+					logger.Error("error1:", err)
 					continue
 				}
 				//将业务Map数据通过代理传递到外层

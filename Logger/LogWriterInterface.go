@@ -1,5 +1,5 @@
 package Logger
 
 type LogWriterInterface interface {
-	Write(prefix string, data interface{}) error
+	Write(prefix string, data string) error
 }

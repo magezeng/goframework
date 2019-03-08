@@ -12,7 +12,7 @@ type logFileWriter struct {
 }
 
 // SetFile 设置文件写入器写入的文件名
-func (f *logFileWriter) SetFile(filename string) (err error) {
+func (f *logFileWriter) setFile(filename string) (err error) {
 	// 如果文件已经打开, 关闭前一个文件
 	if f.file != nil {
 		_ = f.file.Close()
@@ -21,8 +21,12 @@ func (f *logFileWriter) SetFile(filename string) (err error) {
 	return err
 }
 
+func (f *logFileWriter) getFile() string{
+	return f.file.Name()
+}
+
 // Write 实现接口的Write方法
-func (f *logFileWriter) Write(prefix string, data interface{}) error {
+func (f *logFileWriter) Write(prefix string, data string) error {
 	// 日志文件可能没有创建成功
 	if f.file == nil {
 		return errors.New("日志文件未创建成功")
