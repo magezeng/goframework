@@ -3,7 +3,7 @@ package Database
 import (
 	"errors"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/go-xorm/xorm"
+	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 	"sync"
 	"tipu.com/go-framework/Config"
@@ -16,17 +16,17 @@ var (
 )
 
 type Database struct {
-	engineMap map[string]*xorm.Engine
+	engineMap map[string]*gorm.DB
 }
 
 func GetInstance() *Database {
 	once.Do(func() {
-		instance = &Database{engineMap: make(map[string]*xorm.Engine)}
+		instance = &Database{engineMap: make(map[string]*gorm.DB)}
 	})
 	return instance
 }
 
-func (d *Database) GetEngine(engineName string) (engine *xorm.Engine, err error) {
+func (d *Database) GetEngine(engineName string) (engine *gorm.DB, err error) {
 	existedEngine, isExist := d.engineMap[engineName]
 	if !isExist {
 		engine, err = d.getEngine(engineName)
@@ -34,15 +34,10 @@ func (d *Database) GetEngine(engineName string) (engine *xorm.Engine, err error)
 			return
 		}
 		d.engineMap[engineName] = engine
-	}else{
+	} else {
 		engine = existedEngine
 	}
 	return
-}
-
-// isDBSurvival 数据库是否正常在线
-func (d *Database) checkDBSurvival(engine *xorm.Engine) error {
-	return engine.Ping()
 }
 
 func (d *Database) getConnectStr(engineName string) (connectStr string, err error) {
@@ -59,22 +54,15 @@ func (d *Database) getConnectStr(engineName string) (connectStr string, err erro
 	return
 }
 
-func (d *Database) getEngine(engineName string) (engine *xorm.Engine, err error) {
+func (d *Database) getEngine(engineName string) (engine *gorm.DB, err error) {
 	connectStr, err := d.getConnectStr(engineName)
 	if err != nil {
 		return
 	}
-	engine, err = xorm.NewEngine(engineName, connectStr)
+	engine, err = gorm.Open(engineName, connectStr)
 	if err != nil {
-		return
-	}
-	err = d.checkDBSurvival(engine)
-	if err != nil {
-		err = errors.New("数据库Ping失败: " + err.Error())
+		err = errors.New("数据库连接失败: " + err.Error())
 		engine = nil
-	} else {
-		engine.ShowSQL(true)
-		engine.ShowExecTime(true)
 	}
 	return
 }
