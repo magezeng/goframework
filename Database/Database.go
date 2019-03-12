@@ -16,6 +16,7 @@ var (
 )
 
 type Database struct {
+	// 这个Map每种数据库只保持一个连接
 	engineMap map[string]*gorm.DB
 }
 
@@ -38,6 +39,10 @@ func (d *Database) GetEngine(engineName string) (engine *gorm.DB, err error) {
 		engine = existedEngine
 	}
 	return
+}
+
+func (d *Database) GetEngineMap() (engineMap map[string]*gorm.DB) {
+	return d.engineMap
 }
 
 func (d *Database) getConnectStr(engineName string) (connectStr string, err error) {
@@ -63,6 +68,8 @@ func (d *Database) getEngine(engineName string) (engine *gorm.DB, err error) {
 	if err != nil {
 		err = errors.New("数据库连接失败: " + err.Error())
 		engine = nil
+	}else{
+		engine.LogMode(true)
 	}
 	return
 }

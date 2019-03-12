@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func Retry(attempts int, sleep time.Duration, callback func(...interface{}) error, args ...interface{}) (err error) {
+func Retry(attempts int, sleep time.Duration, callback func(args ...interface{}) error, args ...interface{}) (err error) {
 	var internalErr error
 	for i := 0; ; i++ {
 		internalErr = callback(args...)
