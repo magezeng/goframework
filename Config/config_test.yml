@@ -1,0 +1,8 @@
+
+# config.yml
+http:
+db:
+  - connectStr:  remote:Tipu!@#123@tcp(47.75.65.211:3306)/strategy_control_platform?charset=utf8&parseTime=True&loc=Local
+    name: mysql
+  - connectStr:  ./strategy_control_platform.db3
+    name: sqlite3

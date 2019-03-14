@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 	"tipu.com/go-framework/ArrValueTranslate"
+	"tipu.com/go-framework/Model"
 )
 
 var (
@@ -42,11 +43,11 @@ domain: dev.example.com
 is_dev: true
 `
 	conf := &Conf{}
-	baseConfigYaml, _ := genConfigFile("config.yml", baseConfig)         // /path/to/config.yml
-	localConfigYaml, _ := genConfigFile("config_local.yml", localConfig) // /path/to/config_local.yml
+	baseConfigYaml, _ := genConfigFile("config_local_gen_01.yml", baseConfig)         // /path/to/config.yml
+	localConfigYaml, _ := genConfigFile("config_local_gen_02.yml", localConfig) // /path/to/config_local.yml
 
 	cfg.SetDecoder(YAML)
-	err := cfg.Load(conf, baseConfigYaml, localConfigYaml)
+	err := cfg.load(conf, baseConfigYaml, localConfigYaml)
 	if err != nil {
 		t.Error(err.Error())
 		t.Fail()
@@ -73,7 +74,7 @@ func TestJSONLoader_Load(t *testing.T) {
 	}
 	c := make(map[string]interface{})
 	cfg.SetDecoder(JSON)
-	err = cfg.Load(&c, a, b)
+	err = cfg.load(&c, a, b)
 	if err != nil {
 		t.Error(err)
 	}
@@ -96,6 +97,21 @@ func TestJSONLoader_Load(t *testing.T) {
 		t.Error("bar 应该为 baz！")
 		t.Fail()
 	}
+}
+
+func TestConfig_GetData(t *testing.T) {
+	config := Model.Config{}
+	err := cfg.MustGetData(&config, "./config_test.yml")
+	if err != nil{
+		t.Error(err)
+		t.FailNow()
+	}
+	err = cfg.MustGetData(&config, "")
+	if err != nil{
+		t.Error(err)
+		t.FailNow()
+	}
+	t.Log(config)
 }
 
 func genConfigFile(name string, config string) (string, error) {

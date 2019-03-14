@@ -1,10 +1,14 @@
 package Config
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"reflect"
 	"sync"
 )
+
 // 反序列化方法
 type unmarshalFunc func([]byte, interface{}) error
 
@@ -23,11 +27,12 @@ var (
 type Config struct {
 	decoder int
 	loader  LoaderInterface
+	data    map[string]interface{}
 }
 
 func GetInstance() Config {
 	once.Do(func() {
-		instance = Config{loader: new(YAMLLoader)}
+		instance = Config{loader: new(YAMLLoader), data: make(map[string]interface{})}
 	})
 	return instance
 }
@@ -43,8 +48,26 @@ func (c Config) SetDecoder(decoder int) {
 	}
 }
 
-func (c Config) Load(configCls interface{}, configPaths ...string) error {
-	return c.loader.Load(configCls, configPaths...)
+func (c Config) load(configCls interface{}, configPaths ...string) (err error) {
+	err = c.loader.Load(configCls, configPaths...)
+	if err != nil {
+		return
+	}
+	c.data[reflect.TypeOf(configCls).String()] = configCls
+	return
+}
+
+func (c Config) MustGetData(configCls interface{}, configPaths ...string) (err error) {
+	if target, ok := c.data[reflect.TypeOf(configCls).String()]; ok {
+		fmt.Println("[配置] 缓存已经被命中!")
+		// TODO: 有没有更好的方法来处理这个地方
+		targetByte, _ := json.Marshal(target)
+		err = json.Unmarshal(targetByte, configCls)
+	} else {
+		fmt.Println("[配置] 正在准备读文件...")
+		err = c.load(configCls, configPaths...)
+	}
+	return err
 }
 
 func loadWithFunc(conf interface{}, configPaths []string, unmarshal unmarshalFunc) error {

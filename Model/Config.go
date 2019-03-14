@@ -1,4 +1,4 @@
-package Models
+package Model
 
 type DBConfig struct {
 	Name       string `yaml:"name" json:"name"`
@@ -12,6 +12,6 @@ type HTTPConfig struct {
 }
 
 type Config struct {
-	DB   []DBConfig `yaml:"db" json:"db"`
-	HTTP HTTPConfig `yaml:"http" json:"http"`
+	DB     []DBConfig   `yaml:"db" json:"db"`
+	HTTP   HTTPConfig   `yaml:"http" json:"http"`
 }
