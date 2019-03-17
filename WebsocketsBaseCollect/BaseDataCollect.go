@@ -16,7 +16,7 @@ import (
 	"tipu.com/go-framework/Logger"
 )
 
-var logger = Logger.NewLogger().SetFileWriter("app.log")
+var logger = Logger.NewLogger().SetFileWriter("base.log")
 
 type BaseDataCollect struct {
 	url            string

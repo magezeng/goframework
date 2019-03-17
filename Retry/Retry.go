@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-func Retry(attempts int, sleep time.Duration, callback func(args ...interface{}) error, args ...interface{}) (err error) {
-	var internalErr error
+// Retry重试，指定时间和次数，运行回调方法
+func Retry(attempts int, sleep time.Duration, callback func(args ...interface{}) (result interface{}, err error), args ...interface{}) (result interface{}, err error) {
 	for i := 0; ; i++ {
-		internalErr = callback(args...)
+		result, err = callback(args...)
 		if err == nil {
 			return
 		}
@@ -17,6 +17,6 @@ func Retry(attempts int, sleep time.Duration, callback func(args ...interface{})
 		}
 		time.Sleep(sleep)
 	}
-	err = fmt.Errorf("经过了 %d 次重试, 仍然出错: %s\n", attempts, internalErr.Error())
+	err = fmt.Errorf("经过了 %d 次重试, 仍然出错: %s\n", attempts, err.Error())
 	return
 }
