@@ -8,21 +8,22 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"runtime/debug"
 	"sync"
 	"time"
 	"tipu.com/go-framework/Broadcast"
 	"tipu.com/go-framework/Logger"
+	"tipu.com/go-framework/Retry"
 )
 
 var logger = Logger.NewLogger().SetFileWriter("base.log")
 
 type BaseDataCollect struct {
-	url            string
-	path           string
-	connect        *websocket.Conn
-	IsPrintProcess bool
+	url     string
+	path    string
+	connect *websocket.Conn
 	//连接使用互斥锁，go的websockets链接只能同时发一个数据  用这个保证不会同时两个数据在发送
 	connectMutex   *sync.Mutex
 	receiveChannel chan interface{}
@@ -43,39 +44,37 @@ func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate Col
 	collect.closeWaitGroup = sync.WaitGroup{}
 }
 
-func (collect *BaseDataCollect) ConnectToService() {
+func (collect *BaseDataCollect) ConnectToService(apiKey string) (err error) {
 
 	if collect.url == "" || collect.path == "" {
-		panic("url 或 path 为空")
+		err = errors.New("url 或 path 为空")
+		return
 	}
 
 	collect.aspectDelegate.PreConnectToService()
 
-	defer func() {
-		err := recover()
-
-		if err == nil {
-			collect.receiveChannel = make(chan interface{})
-			collect.handleData()
-			collect.CollectData()
-			collect.Palpitate()
-		} else {
-			if collect.IsPrintProcess {
-				fmt.Println(err)
-			}
-		}
-		collect.aspectDelegate.AfterConnectToService(err == nil)
-	}()
-
 	tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
 	logger.Info("发起链接: ", tempURL.String())
 
-	connect, _, err := websocket.DefaultDialer.Dial(tempURL.String(), nil)
-	collect.connect = connect
+	result, err := Retry.Retry(10, 2*time.Second, func(args ...interface{}) (result interface{}, err error) {
+
+		connect, _, err := websocket.DefaultDialer.Dial(args[0].(string), args[1].(http.Header))
+		if err != nil {
+			return
+		}
+		result = connect
+		return
+	}, tempURL.String(), nil)
 	if err != nil {
-		panic("链接错误:" + err.Error())
+		return
 	}
-	return
+
+	collect.connect = result.(*websocket.Conn)
+	collect.receiveChannel = make(chan interface{})
+	collect.handleData()
+	collect.CollectData()
+	collect.Palpitate()
+	return collect.aspectDelegate.AfterConnectToService(apiKey)
 }
 
 func (collect *BaseDataCollect) DisConnect() {
@@ -96,9 +95,9 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 	} else {
 		jsBytes, err = json.Marshal(data)
 	}
-	if collect.IsPrintProcess {
-		logger.Info("发送了", string(jsBytes))
-	}
+
+	logger.Info("发送了", string(jsBytes))
+
 	if err != nil {
 		return
 	}
@@ -197,9 +196,7 @@ func (collect *BaseDataCollect) CollectData() {
 					}
 				}
 				if tempText != nil {
-					if collect.IsPrintProcess {
-						logger.Info("接收到", string(tempText))
-					}
+					logger.Info("接收到", string(tempText))
 					collect.receiveChannel <- tempText
 				}
 			case <-tempCloseReceiver.ReveiceChannel:

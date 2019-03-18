@@ -6,7 +6,7 @@ import (
 
 type CollectAspectInterface interface {
 	PreConnectToService()
-	AfterConnectToService(success bool)
+	AfterConnectToService(apiKey string) error
 	OnAbnormal()
 	HandleData(interface{})
 	GetPingString() string
