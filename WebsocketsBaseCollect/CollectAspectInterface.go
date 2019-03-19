@@ -5,7 +5,7 @@ import (
 )
 
 type CollectAspectInterface interface {
-	PreConnectToService()
+	PreConnectToService() error
 	AfterConnectToService(apiKey string) error
 	OnAbnormal()
 	HandleData(interface{})

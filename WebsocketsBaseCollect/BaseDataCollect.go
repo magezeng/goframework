@@ -3,17 +3,15 @@ package WebsocketsBaseCollect
 import (
 	"bytes"
 	"compress/flate"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
-	"net/http"
 	"net/url"
-	"runtime/debug"
 	"sync"
 	"time"
-	"tipu.com/go-framework/Broadcast"
 	"tipu.com/go-framework/Logger"
 	"tipu.com/go-framework/Retry"
 )
@@ -21,17 +19,19 @@ import (
 var logger = Logger.NewLogger().SetFileWriter("base.log")
 
 type BaseDataCollect struct {
-	url     string
-	path    string
+	url  string
+	path string
+	// 当前只保持一个websocket连接
 	connect *websocket.Conn
-	//连接使用互斥锁，go的websockets链接只能同时发一个数据  用这个保证不会同时两个数据在发送
+	// 连接使用互斥锁，go的websockets链接只能同时发一个数据  用这个保证不会同时两个数据在发送
 	connectMutex   *sync.Mutex
 	receiveChannel chan interface{}
-	//数据来源，数据处理的代理对象
+	// 数据来源，数据处理的代理对象
 	aspectDelegate CollectAspectInterface
-	//使用通知来保证所有的线程可以第一时间退出
-	closeBroadcast *Broadcast.Broadcast
-	closeWaitGroup sync.WaitGroup
+	// 使用通知来保证所有的线程可以第一时间退出
+	ctx            context.Context
+	cancel         context.CancelFunc
+	closeWaitGroup *sync.WaitGroup
 }
 
 func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate CollectAspectInterface) {
@@ -39,38 +39,45 @@ func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate Col
 	collect.path = path
 	collect.connectMutex = new(sync.Mutex)
 	collect.aspectDelegate = aspectDelegate
-
-	collect.closeBroadcast = Broadcast.NewBroadcast()
-	collect.closeWaitGroup = sync.WaitGroup{}
+	collect.ctx, collect.cancel = context.WithCancel(context.TODO())
+	collect.closeWaitGroup = new(sync.WaitGroup)
+	// 有两个线程需要关闭
+	collect.closeWaitGroup.Add(2)
 }
 
 func (collect *BaseDataCollect) ConnectToService(apiKey string) (err error) {
-
 	if collect.url == "" || collect.path == "" {
 		err = errors.New("url 或 path 为空")
 		return
 	}
 
-	collect.aspectDelegate.PreConnectToService()
+	// 连接前进行的操作
+	err = collect.aspectDelegate.PreConnectToService()
+	if err != nil {
+		return
+	}
 
 	tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
 	logger.Info("发起链接: ", tempURL.String())
-
-	result, err := Retry.Retry(10, 2*time.Second, func(args ...interface{}) (result interface{}, err error) {
-
-		connect, _, err := websocket.DefaultDialer.Dial(args[0].(string), args[1].(http.Header))
+	// 尝试三次连接，间隔2s，失败时返回错误
+	result, err := Retry.Retry(3, 2*time.Second, func(args ...interface{}) (result interface{}, err error) {
+		// 超时改为10秒
+		websocket.DefaultDialer.HandshakeTimeout = time.Second * 20
+		websocket.DefaultDialer.EnableCompression = true
+		connect, _, err := websocket.DefaultDialer.Dial(args[0].(string), nil)
 		if err != nil {
 			return
 		}
 		result = connect
 		return
-	}, tempURL.String(), nil)
+	}, tempURL.String())
 	if err != nil {
 		return
 	}
-
+	// 连接后进行的操作
 	collect.connect = result.(*websocket.Conn)
 	collect.receiveChannel = make(chan interface{})
+	// 启动三个异步线程
 	collect.handleData()
 	collect.CollectData()
 	collect.Palpitate()
@@ -78,14 +85,19 @@ func (collect *BaseDataCollect) ConnectToService(apiKey string) (err error) {
 }
 
 func (collect *BaseDataCollect) DisConnect() {
-	collect.closeBroadcast.PostMessage("")
+	// 通知上下文取消
+	collect.cancel()
+	fmt.Println("发送取消命令")
+	// 等待线程终止
+	collect.closeWaitGroup.Wait()
+	// 关闭websocket连接
 	if collect.connect != nil {
 		_ = collect.connect.Close()
 	}
-	if collect.receiveChannel != nil {
+	// 关闭接收channel
+	if _, isClosed := <-collect.receiveChannel; !isClosed {
 		close(collect.receiveChannel)
 	}
-	collect.closeWaitGroup.Wait()
 }
 
 func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
@@ -104,139 +116,127 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 	collect.connectMutex.Lock()
 	defer collect.connectMutex.Unlock()
 
-	//最多进行3次
-	for i := 0; i < collect.aspectDelegate.GetWebsocketsSendDataMaxRetry(); i++ {
-		err = collect.connect.WriteMessage(websocket.TextMessage, jsBytes)
+	// 最多进行3次
+	maxRetry := collect.aspectDelegate.GetWebsocketsSendDataMaxRetry()
+	_, err = Retry.Retry(maxRetry, 1, func(args ...interface{}) (result interface{}, err error) {
+		err = collect.connect.WriteMessage(websocket.TextMessage, args[0].([]byte))
 		if err != nil {
-			logger.Error("error3:", err)
-		} else {
-			break
+			logger.Error("发送数据失败:", err)
+			return
 		}
-	}
+		return
+	}, jsBytes)
 	return
 }
 
+// Palpitate 心跳线程，相同间隔发送一个ping
+// 不涉及资源竞争，接收到cancel就直接退出
 func (collect *BaseDataCollect) Palpitate() {
-	go func(collect *BaseDataCollect) {
-		//waitGroup增加和释放，让外层在断开连接的时候可以等到所有的线程都退出之后才进行下一次开启
-		collect.closeWaitGroup.Add(1)
-		defer collect.closeWaitGroup.Done()
-		//呼吸发送线程因为不会涉及到显示的资源竞争，可以不用增加资源判断，直接调用即可，在SendData函数内部会进行判断
-		tempCloseReceiver := collect.closeBroadcast.AddReceiver()
-		defer collect.closeBroadcast.RemoveReceiver(tempCloseReceiver)
+	go func() {
 		for {
 			select {
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheSendIntermit()):
 				if collect.connect == nil {
 					continue
 				} else {
-					//呼吸发送发生错误时直接忽略错误，因为连续护送发不出去本来就是错误，可以允许等待呼吸接受不到数据时退出本次连接
+					// 呼吸发送发生错误时直接忽略错误，因为连续护送发不出去本来就是错误，可以允许等待呼吸接受不到数据时退出本次连接
 					_ = collect.SendData(collect.aspectDelegate.GetPingString())
 				}
-			case <-tempCloseReceiver.ReveiceChannel:
-				logger.Warn("收到断开连接的通知，呼吸发送线程退出")
+			case <-collect.ctx.Done():
+				logger.Warn("Palpitate 收到断开连接的通知，呼吸发送线程退出")
 				return
 			}
 		}
-	}(collect)
+	}()
 }
 
+// CollectData 将接收到的数据转换格式后发送到receiveChannel中,让handleData去处理
+// 这个方法是异步的，如果出错或者其它线程出错，则本线程中止
 func (collect *BaseDataCollect) CollectData() {
-	go func(collect *BaseDataCollect) {
-		//waitGroup增加和释放，让外层在断开连接的时候可以等到所有的线程都退出之后才进行下一次开启
-		collect.closeWaitGroup.Add(1)
+	go func() {
 		defer func() {
-			//此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
-			collect.closeWaitGroup.Done()
+			// 此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
 			if ee := recover(); ee != nil {
-				debug.PrintStack()
+				// debug.PrintStack()
 				if err, isError := ee.(error); isError {
-					logger.Error("CollectData 抛出异常")
+					collect.closeWaitGroup.Done()
 					collect.ThrowAbnormal(err)
 				}
 			}
 		}()
-
-		//读取信息的线程和外部通信的结构
+		// 读取信息的线程和外部通信的结构
 		type Message struct {
 			messageType int
 			message     []byte
 			err         error
 		}
 
-		tempCloseReceiver := collect.closeBroadcast.AddReceiver()
-		defer collect.closeBroadcast.RemoveReceiver(tempCloseReceiver)
 		for {
-			//读取信息的线程和外部通信的通道
+			// 读取信息的线程和外部通信的通道
 			tempChannel := make(chan Message)
-			go func(messageChan chan Message) {
+			go func() {
 				defer close(tempChannel)
 				tempMessage := Message{}
 				tempMessage.messageType, tempMessage.message, tempMessage.err = collect.connect.ReadMessage()
 				tempChannel <- tempMessage
-			}(tempChannel)
-
+			}()
 			select {
 			case tempMessage := <-tempChannel:
 				if tempMessage.err != nil {
-					panic(tempMessage.err)
-					return
+					// 保证处理线程不会死锁
+					collect.receiveChannel <- tempMessage.err
+					panic(errors.New("CollectData 数据采集线程出错: " + tempMessage.err.Error()))
 				}
+
 				var tempText []byte
 				switch tempMessage.messageType {
 				case websocket.TextMessage:
-					//不需要解压
+					// 不需要解压
 					tempText = tempMessage.message
 				case websocket.BinaryMessage:
-					//需要解压
 					var err error
+					// 解压缩失败的情况下，报错
 					tempText, err = gzipDecode2(tempMessage.message)
 					if err != nil {
-						panic(err)
+						panic(errors.New("CollectData 数据采集线程出错: " + err.Error()))
 					}
 				}
+
 				if tempText != nil {
-					logger.Info("接收到", string(tempText))
+					logger.Info("CollectData 接收到: ", string(tempText))
 					collect.receiveChannel <- tempText
 				}
-			case <-tempCloseReceiver.ReveiceChannel:
-				logger.Warn("收到断开连接的通知，数据采集线程退出")
-				return
+			case <-collect.ctx.Done():
+				panic(errors.New("CollectData 收到其它线程发出的立即断开连接的通知，数据采集线程退出"))
 			}
 		}
-	}(collect)
+	}()
 }
 
 func (collect *BaseDataCollect) ThrowAbnormal(tempError error) {
-	//假如调用此函数的地方发生了异常   则调用代理的异常处理
-	if tempError != nil {
-		logger.Error("抛出异常打印:", tempError)
-		collect.aspectDelegate.OnAbnormal()
-	}
-	fmt.Println(tempError)
+	// 假如调用此函数的地方发生了异常   则调用代理的异常处理
+	logger.Error("异常详细信息:", tempError.Error())
+	collect.aspectDelegate.OnAbnormal()
 }
 
+// handleData 接收到数据时进行转换处理，并发送到外层的HandleData进行进一步的处理
+// 这个方法是异步的
 func (collect *BaseDataCollect) handleData() {
-	go func(collect *BaseDataCollect) {
-		//waitGroup增加和释放，让外层在断开连接的时候可以等到所有的线程都退出之后才进行下一次开启
-		collect.closeWaitGroup.Add(1)
+	go func() {
 		defer func() {
 			//此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
-			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
-				debug.PrintStack()
+				// debug.PrintStack()
 				if err, isError := ee.(error); isError {
-					logger.Error("handleData抛出异常")
+					collect.closeWaitGroup.Done()
 					collect.ThrowAbnormal(err)
 				}
 			}
 		}()
-		tempCloseReceiver := collect.closeBroadcast.AddReceiver()
-		defer collect.closeBroadcast.RemoveReceiver(tempCloseReceiver)
 		for {
 			select {
 			case responseBytes := <-collect.receiveChannel:
-				//将interface转为String
+				// 将interface转为String
 				responseString := string(responseBytes.([]byte))
 				//过滤掉呼吸返回
 				if collect.aspectDelegate.IsPong(responseString) {
@@ -245,23 +245,23 @@ func (collect *BaseDataCollect) handleData() {
 				//将业务数据转换为Map
 				obj, err := collect.aspectDelegate.ChangeResponseToStruct(responseBytes.([]byte))
 				if err != nil {
-					logger.Error("error1:", err)
-					continue
+					panic(errors.New("handleData 业务数据转换为map失败: " + err.Error()))
 				}
-				//将业务Map数据通过代理传递到外层
-				collect.aspectDelegate.HandleData(obj)
+				// 将业务Map数据通过代理传递到外层
+				// 异步是为了防止循环等待
+				go collect.aspectDelegate.HandleData(obj)
 
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheReciveTimeOut()):
-				//case <-time.After(time.Millisecond * 50):
-				//发送呼吸数据是5秒发送一次  10秒未收到呼吸返回则表示当前链接出现了故障 需要进行链接死亡后的操作
-				panic(errors.New("2呼吸超时"))
-				return
-			case <-tempCloseReceiver.ReveiceChannel:
-				//当接收到外层的断开连接的通知之后   退出循环  结束该子线程
-				return
+				// case <-time.After(time.Millisecond * 50):
+				// 发送呼吸数据是5秒发送一次  10秒未收到呼吸返回则表示当前链接出现了故障 需要进行链接死亡后的操作
+				panic(errors.New("handleData 2呼吸超时"))
+
+			case <-collect.ctx.Done():
+				// 当接收到外层的断开连接的通知之后   退出循环  结束该子线程
+				panic(errors.New("handleData 收到其它线程发出的立即断开连接的通知，数据处理线程退出"))
 			}
 		}
-	}(collect)
+	}()
 }
 
 func gzipDecode2(in []byte) ([]byte, error) {

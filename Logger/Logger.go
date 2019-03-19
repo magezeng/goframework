@@ -2,12 +2,8 @@ package Logger
 
 import (
 	"encoding/json"
-	"sync"
 	"time"
 )
-
-// 锁
-var lock sync.Mutex
 
 type Logger struct {
 	// 日志写入器的列表
@@ -25,7 +21,7 @@ const (
 	ERROR
 )
 
-func (l *Logger) SetFileWriter(path string) *Logger{
+func (l *Logger) SetFileWriter(path string) *Logger {
 	fw := NewLogFileWriter()
 	err := fw.setFile(path)
 	if err != nil {
@@ -35,12 +31,12 @@ func (l *Logger) SetFileWriter(path string) *Logger{
 	return l
 }
 
-func (l *Logger) SetLevel(level int) *Logger{
+func (l *Logger) SetLevel(level int) *Logger {
 	l.level = level
 	return l
 }
 
-func (l *Logger) SetTimeFormatter(timeFormatter string) *Logger{
+func (l *Logger) SetTimeFormatter(timeFormatter string) *Logger {
 	l.timeFormatter = timeFormatter
 	return l
 }
@@ -94,15 +90,13 @@ func (l *Logger) addWriter(writer LogWriterInterface) {
 	l.writerList = append(l.writerList, writer)
 }
 
-func (l *Logger) withConsoleWriter() *Logger{
+func (l *Logger) withConsoleWriter() *Logger {
 	l.addWriter(NewLogConsoleWriter())
 	return l
 }
 
 // NewLogger 在线程安全的前提下取得logger
 func NewLogger() *Logger {
-	lock.Lock()
-	defer lock.Unlock()
 	instance := &Logger{level: DEBUG, timeFormatter: "2006-01-01 15:04:05"}
 	return instance.withConsoleWriter()
 }
