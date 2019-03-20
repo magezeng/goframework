@@ -34,6 +34,7 @@ type BaseDataCollect struct {
 }
 
 func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate CollectAspectInterface) {
+	// 防止重复的初始化
 	if collect.connect == nil {
 		collect.url = url
 		collect.path = path
@@ -57,6 +58,7 @@ func (collect *BaseDataCollect) ConnectToService(apiKey string) (err error) {
 		return
 	}
 	// 当没有建立连接时，初始化一个ws连接
+	// 防止重复初始化
 	if collect.connect == nil {
 		tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
 		logger.Info("发起链接: ", tempURL.String())
