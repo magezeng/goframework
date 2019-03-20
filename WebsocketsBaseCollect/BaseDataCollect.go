@@ -46,7 +46,7 @@ func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate Col
 	}
 }
 
-func (collect *BaseDataCollect) ConnectToService(apiKey string) (err error) {
+func (collect *BaseDataCollect) ConnectToService() (err error) {
 	if collect.url == "" || collect.path == "" {
 		err = errors.New("url 或 path 为空")
 		return
@@ -87,7 +87,7 @@ func (collect *BaseDataCollect) ConnectToService(apiKey string) (err error) {
 		collect.Palpitate()
 	}
 
-	return collect.aspectDelegate.AfterConnectToService(apiKey)
+	return collect.aspectDelegate.AfterConnectToService()
 }
 
 func (collect *BaseDataCollect) DisConnect() {

@@ -12,6 +12,8 @@ type Logger struct {
 	level int
 	// 时间格式
 	timeFormatter string
+	// 前缀
+	prefix string
 }
 
 const (
@@ -38,6 +40,11 @@ func (l *Logger) SetLevel(level int) *Logger {
 
 func (l *Logger) SetTimeFormatter(timeFormatter string) *Logger {
 	l.timeFormatter = timeFormatter
+	return l
+}
+
+func (l *Logger) SetPrefix(prefix string) *Logger{
+	l.prefix = prefix
 	return l
 }
 
@@ -81,7 +88,7 @@ func (l *Logger) log(prefix string, data ...interface{}) {
 	}
 	for _, writer := range l.writerList {
 		// 将日志输出到每一个写入器中
-		_ = writer.Write(timeStr+" "+prefix, logStr)
+		_ = writer.Write(timeStr+" "+prefix+l.prefix, logStr)
 	}
 }
 
