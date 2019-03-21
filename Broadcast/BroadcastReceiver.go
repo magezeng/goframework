@@ -1,6 +1,6 @@
 package Broadcast
 
 type BroadcastReceiver struct {
-	id             string
+	Id             string
 	ReveiceChannel chan BroadcastContent
 }

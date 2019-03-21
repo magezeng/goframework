@@ -15,8 +15,6 @@ import (
 	"tipu.com/go-framework/Retry"
 )
 
-var logger = Logger.NewLogger().SetFileWriter("base.log")
-
 type BaseDataCollect struct {
 	url  string
 	path string
@@ -31,9 +29,10 @@ type BaseDataCollect struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	closeWaitGroup *sync.WaitGroup
+	logger *Logger.Logger
 }
 
-func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate CollectAspectInterface) {
+func (collect *BaseDataCollect) Init(url string, path string, apiKey string, aspectDelegate CollectAspectInterface) {
 	// 防止重复的初始化
 	if collect.connect == nil {
 		collect.url = url
@@ -43,6 +42,8 @@ func (collect *BaseDataCollect) Init(url string, path string, aspectDelegate Col
 		collect.ctx, collect.cancel = context.WithCancel(context.TODO())
 		collect.closeWaitGroup = new(sync.WaitGroup)
 		collect.closeWaitGroup.Add(2)
+		// 根据apiKey初始化日志
+		collect.setCollectLogger(apiKey)
 	}
 }
 
@@ -61,7 +62,7 @@ func (collect *BaseDataCollect) ConnectToService() (err error) {
 	// 防止重复初始化
 	if collect.connect == nil {
 		tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
-		logger.Info("发起链接: ", tempURL.String())
+		collect.logger.Info("发起链接: ", tempURL.String())
 		// 尝试三次连接，间隔2s，失败时返回错误
 		result, err1 := Retry.Retry(3, 2*time.Second, func(args ...interface{}) (result interface{}, err error) {
 			// 超时改为10秒
@@ -94,10 +95,9 @@ func (collect *BaseDataCollect) DisConnect() {
 	go func(collect *BaseDataCollect) {
 		// 保证此处只能发出一次取消命令
 		if collect.ctx.Err() == nil {
-			logger.Warn("准备断开连接")
 			// 通知上下文取消
 			collect.cancel()
-			logger.Warn("发出了取消命令")
+			collect.logger.Warn("发出了取消所有线程的命令")
 			// 等待线程终止
 			collect.closeWaitGroup.Wait()
 			// 关闭websocket连接
@@ -108,7 +108,7 @@ func (collect *BaseDataCollect) DisConnect() {
 			if _, isClosed := <-collect.receiveChannel; !isClosed {
 				close(collect.receiveChannel)
 			}
-			logger.Warn("断开连接完成")
+			collect.logger.Warn("取消所有线程完成")
 		}
 	}(collect)
 }
@@ -121,7 +121,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 		jsBytes, err = json.Marshal(data)
 	}
 
-	logger.Info("发送了", string(jsBytes))
+	collect.logger.Info("发送了", string(jsBytes))
 
 	if err != nil {
 		return
@@ -134,7 +134,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 	_, err = Retry.Retry(maxRetry, 1, func(args ...interface{}) (result interface{}, err error) {
 		err = collect.connect.WriteMessage(websocket.TextMessage, args[0].([]byte))
 		if err != nil {
-			logger.Error("发送数据失败:", err)
+			collect.logger.Error("发送数据失败:", err)
 			return
 		}
 		return
@@ -146,7 +146,7 @@ func (collect *BaseDataCollect) SendData(data interface{}) (err error) {
 // 不涉及资源竞争，接收到cancel就直接退出
 func (collect *BaseDataCollect) Palpitate() {
 	go func(collect *BaseDataCollect) {
-		defer logger.Warn("Palpitate 呼吸发送线程已经退出")
+		defer collect.logger.Warn("Palpitate 呼吸发送线程已经退出")
 		for {
 			select {
 			case <-time.After(time.Second * collect.aspectDelegate.GetWebsocketsBreatheSendIntermit()):
@@ -157,7 +157,7 @@ func (collect *BaseDataCollect) Palpitate() {
 					_ = collect.SendData(collect.aspectDelegate.GetPingString())
 				}
 			case <-collect.ctx.Done():
-				logger.Warn("Palpitate 呼吸发送线程收到立即退出的通知")
+				collect.logger.Warn("Palpitate 呼吸发送线程收到立即退出的通知")
 				return
 			}
 		}
@@ -174,7 +174,7 @@ func (collect *BaseDataCollect) CollectData() {
 			if ee := recover(); ee != nil {
 				if err, isError := ee.(error); isError {
 					collect.ThrowAbnormal(err)
-					logger.Warn("CollectData 数据采集线程已经退出")
+					collect.logger.Warn("CollectData 数据采集线程已经退出")
 				}
 			}
 		}()
@@ -215,7 +215,7 @@ func (collect *BaseDataCollect) CollectData() {
 				}
 
 				if tempText != nil {
-					logger.Info("CollectData 接收到: ", string(tempText))
+					collect.logger.Info("CollectData 接收到: ", string(tempText))
 					collect.receiveChannel <- tempText
 				}
 			case <-collect.ctx.Done():
@@ -227,7 +227,7 @@ func (collect *BaseDataCollect) CollectData() {
 
 func (collect *BaseDataCollect) ThrowAbnormal(tempError error) {
 	// 假如调用此函数的地方发生了异常   则调用代理的异常处理
-	logger.Error("ThrowAbnormal 异常详细信息:", tempError.Error())
+	collect.logger.Error("ThrowAbnormal 异常详细信息:", tempError.Error())
 	collect.aspectDelegate.OnAbnormal()
 }
 
@@ -241,7 +241,7 @@ func (collect *BaseDataCollect) handleData() {
 			if ee := recover(); ee != nil {
 				if err, isError := ee.(error); isError {
 					collect.ThrowAbnormal(err)
-					logger.Warn("handleData 数据处理线程已经退出")
+					collect.logger.Warn("handleData 数据处理线程已经退出")
 				}
 			}
 		}()
@@ -274,6 +274,18 @@ func (collect *BaseDataCollect) handleData() {
 			}
 		}
 	}(collect)
+}
+
+// setCollectLogger 单独设置每一个用户的log，以防冲突
+func (collect *BaseDataCollect) setCollectLogger(apiKey string){
+	collect.logger = Logger.NewLogger()
+	if apiKey != "" {
+		collect.logger.SetFileWriter("base-" + apiKey[0:5] + ".log")
+		collect.logger.SetPrefix("[Base][用户:" + apiKey[0:5] + "]")
+	} else {
+		collect.logger.SetFileWriter("base-public.log")
+		collect.logger.SetPrefix("[Base]")
+	}
 }
 
 func gzipDecode2(in []byte) ([]byte, error) {

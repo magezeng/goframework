@@ -28,7 +28,7 @@ func (broadcast *Broadcast) waitMessage() {
 			content := <-broadcast.messageWaitChannel
 			broadcast.receiversRWMutex.RLock()
 			for _, element := range broadcast.receivers {
-				go func(){
+				go func() {
 					element.ReveiceChannel <- content
 				}()
 			}
@@ -55,8 +55,15 @@ func (broadcast *Broadcast) AddReceiver() BroadcastReceiver {
 	broadcast.receiversRWMutex.Unlock()
 	return receiver
 }
+
 func (broadcast *Broadcast) RemoveReceiver(receiver BroadcastReceiver) {
 	broadcast.receiversRWMutex.Lock()
-	delete(broadcast.receivers, receiver.id)
+	delete(broadcast.receivers, receiver.Id)
+	broadcast.receiversRWMutex.Unlock()
+}
+
+func (broadcast *Broadcast) RemoveReceiverByID(id string) {
+	broadcast.receiversRWMutex.Lock()
+	delete(broadcast.receivers, id)
 	broadcast.receiversRWMutex.Unlock()
 }
