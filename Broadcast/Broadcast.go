@@ -29,7 +29,7 @@ func (broadcast *Broadcast) waitMessage() {
 			broadcast.receiversRWMutex.RLock()
 			for _, element := range broadcast.receivers {
 				go func() {
-					element.ReveiceChannel <- content
+					element.ReceiveChannel <- content
 				}()
 			}
 			broadcast.receiversRWMutex.RUnlock()

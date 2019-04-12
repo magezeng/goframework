@@ -2,7 +2,6 @@ package Config
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"reflect"
@@ -59,12 +58,11 @@ func (c Config) load(configCls interface{}, configPaths ...string) (err error) {
 
 func (c Config) MustGetData(configCls interface{}, configPaths ...string) (err error) {
 	if target, ok := c.data[reflect.TypeOf(configCls).String()]; ok {
-		fmt.Println("[配置] 缓存已经被命中!")
-		// TODO: 有没有更好的方法来处理这个地方
+		// fmt.Println("[配置] 缓存已经被命中!")
 		targetByte, _ := json.Marshal(target)
 		err = json.Unmarshal(targetByte, configCls)
 	} else {
-		fmt.Println("[配置] 正在准备读文件...")
+		// fmt.Println("[配置] 正在准备读文件...")
 		err = c.load(configCls, configPaths...)
 	}
 	return err
