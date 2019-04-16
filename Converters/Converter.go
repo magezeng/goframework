@@ -8,21 +8,21 @@ import (
 /*
  int convert string
 */
-func Int2String(arg int) string {
+func IntToString(arg int) string {
 	return strconv.Itoa(arg)
 }
 
 /*
  int64 convert string
 */
-func Int642String(arg int64) string {
+func Int64ToString(arg int64) string {
 	return strconv.FormatInt(int64(arg), 10)
 }
 
 /*
   json string convert struct
 */
-func JsonString2Struct(jsonString string, result interface{}) error {
+func JsonStringToStruct(jsonString string, result interface{}) error {
 	jsonBytes := []byte(jsonString)
 	err := json.Unmarshal(jsonBytes, result)
 	return err
@@ -31,7 +31,7 @@ func JsonString2Struct(jsonString string, result interface{}) error {
 /*
   json byte array convert struct
 */
-func JsonBytes2Struct(jsonBytes []byte, result interface{}) error {
+func JsonBytesToStruct(jsonBytes []byte, result interface{}) error {
 	err := json.Unmarshal(jsonBytes, result)
 	return err
 }
@@ -39,23 +39,12 @@ func JsonBytes2Struct(jsonBytes []byte, result interface{}) error {
 /*
  struct convert json string
 */
-func Struct2JsonString(structt interface{}) (jsonString string, err error) {
+func StructToJsonString(structt interface{}) (jsonString string, err error) {
 	data, err := json.Marshal(structt)
 	if err != nil {
 		return "", err
 	}
 	return string(data), nil
-}
-
-/*
-  return decimalism string 9223372036854775807 -> "9223372036854775807"
-*/
-func Int64ToString(arg int64) string {
-	return strconv.FormatInt(arg, 10)
-}
-
-func IntToString(arg int) string {
-	return strconv.Itoa(arg)
 }
 
 func StringToInt64(arg string) int64 {
@@ -65,6 +54,10 @@ func StringToInt64(arg string) int64 {
 	} else {
 		return value
 	}
+}
+
+func Float64ToString(arg float64) string {
+	return strconv.FormatFloat(arg, 'f', -1, 64)
 }
 
 func StringToInt(arg string) int {

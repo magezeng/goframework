@@ -1,4 +1,4 @@
-package Model
+package Models
 
 // Result 返回结果时的通用结构
 type Result struct {

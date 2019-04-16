@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 	"tipu.com/go-framework/ArrValueTranslate"
-	"tipu.com/go-framework/Model"
+	"tipu.com/go-framework/Models"
 )
 
 var (
@@ -100,7 +100,7 @@ func TestJSONLoader_Load(t *testing.T) {
 }
 
 func TestConfig_GetData(t *testing.T) {
-	config := Model.Config{}
+	config := Models.Config{}
 	err := cfg.MustGetData(&config, "./config_test.yml")
 	if err != nil{
 		t.Error(err)

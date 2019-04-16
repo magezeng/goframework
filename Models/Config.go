@@ -1,4 +1,4 @@
-package Model
+package Models
 
 type DBConfig struct {
 	Name       string `yaml:"name" json:"name"`

@@ -11,6 +11,8 @@ import (
 // 反序列化方法
 type unmarshalFunc func([]byte, interface{}) error
 
+// TODO: 如果要从不同位置读取相同数据模型的配置，可能不能实现缓存
+
 const (
 	JSON = iota
 	YAML
