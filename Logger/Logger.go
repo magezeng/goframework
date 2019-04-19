@@ -1,8 +1,8 @@
 package Logger
 
 import (
-	"encoding/json"
 	"time"
+	"fmt"
 )
 
 type Logger struct {
@@ -81,7 +81,8 @@ func (l *Logger) log(prefix string, data ...interface{}) {
 		if str, ok := item.(string); ok {
 			logStr += str
 		} else {
-			res, _ := json.Marshal(item)
+			res := fmt.Sprint(item)
+			// res, _ := json.Marshal()
 			logStr += string(res)
 		}
 		logStr += " "
