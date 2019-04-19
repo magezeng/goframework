@@ -33,19 +33,15 @@ type BaseDataCollect struct {
 }
 
 func (collect *BaseDataCollect) Init(url string, path string, apiKey string, aspectDelegate CollectAspectInterface) {
-	// 防止重复的初始化
-	if collect.connect == nil {
-		collect.url = url
-		collect.path = path
-		collect.connectMutex = new(sync.Mutex)
-		collect.aspectDelegate = aspectDelegate
-		// 初始化链接退出上下文及wait group
-		collect.ctx, collect.cancel = context.WithCancel(context.TODO())
-		collect.closeWaitGroup = new(sync.WaitGroup)
-		collect.closeWaitGroup.Add(2)
-		// 根据apiKey初始化日志
-		collect.setCollectLogger(apiKey)
-	}
+	collect.url = url
+	collect.path = path
+	collect.connectMutex = new(sync.Mutex)
+	collect.aspectDelegate = aspectDelegate
+	// 初始化链接退出上下文及wait group
+	collect.ctx, collect.cancel = context.WithCancel(context.TODO())
+	collect.closeWaitGroup = new(sync.WaitGroup)
+	// 根据apiKey初始化日志
+	collect.setCollectLogger(apiKey)
 }
 
 func (collect *BaseDataCollect) ConnectToService() (err error) {
@@ -59,36 +55,33 @@ func (collect *BaseDataCollect) ConnectToService() (err error) {
 	if err != nil {
 		return
 	}
-	// 当没有建立连接时，初始化一个ws连接
-	// 防止重复初始化
-	if collect.connect == nil {
-		tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
-		collect.logger.Info("发起链接: ", tempURL.String())
-		// 尝试三次连接，间隔2s，失败时返回错误
-		result, err1 := Retry.Retry(3, 2*time.Second, func() (result interface{}, err error) {
-			// 超时改为20秒
-			websocket.DefaultDialer.HandshakeTimeout = time.Second * 20
-			websocket.DefaultDialer.EnableCompression = true
-			websocket.DefaultDialer.WriteBufferSize = 1024
-			connect, _, err := websocket.DefaultDialer.Dial(tempURL.String(), nil)
-			if err != nil {
-				return
-			}
-			result = connect
-			return
-		})
-		if err1 != nil {
-			err = err1
+	// 初始化一个ws连接
+	tempURL := url.URL{Scheme: "wss", Host: collect.url, Path: collect.path, RawQuery: "compress=true"}
+	collect.logger.Info("发起链接: ", tempURL.String())
+	// 尝试三次连接，间隔2s，失败时返回错误
+	result, err1 := Retry.Retry(3, 2*time.Second, func() (result interface{}, err error) {
+		// 超时改为20秒
+		websocket.DefaultDialer.HandshakeTimeout = time.Second * 20
+		websocket.DefaultDialer.EnableCompression = true
+		websocket.DefaultDialer.WriteBufferSize = 1024
+		connect, _, err := websocket.DefaultDialer.Dial(tempURL.String(), nil)
+		if err != nil {
 			return
 		}
-		// 连接后进行的操作
-		collect.connect = result.(*websocket.Conn)
-		collect.receiveChannel = make(chan interface{})
-		// 启动三个异步线程
-		collect.Palpitate()
-		collect.CollectData()
-		collect.handleData()
+		result = connect
+		return
+	})
+	if err1 != nil {
+		err = err1
+		return
 	}
+	// 连接后进行的操作
+	collect.connect = result.(*websocket.Conn)
+	collect.receiveChannel = make(chan interface{})
+	// 启动三个异步线程
+	collect.Palpitate()
+	collect.CollectData()
+	collect.handleData()
 
 	return collect.aspectDelegate.AfterConnectToService()
 }
@@ -106,10 +99,8 @@ func (collect *BaseDataCollect) DisConnect() {
 		if collect.connect != nil {
 			_ = collect.connect.Close()
 		}
-		// 关闭接收channel，如果已经被关闭了就跳过
-		if _, isClosed := <-collect.receiveChannel; !isClosed {
-			close(collect.receiveChannel)
-		}
+		// TODO: graceful close of a channel
+		close(collect.receiveChannel)
 		collect.logger.Warn("数据采集器释放所有线程和连接完成")
 	}
 }
@@ -170,13 +161,14 @@ func (collect *BaseDataCollect) Palpitate() {
 // 这个方法是异步的，如果出错或者其它线程出错，则本线程中止
 func (collect *BaseDataCollect) CollectData() {
 	go func() {
+		collect.closeWaitGroup.Add(1)
 		defer func() {
 			// 此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
 			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
 				if err, isError := ee.(error); isError {
+					// 断开重连
 					collect.ThrowAbnormal(err)
-					collect.logger.Warn("CollectData 数据采集线程已经退出")
 				}
 			}
 		}()
@@ -221,7 +213,8 @@ func (collect *BaseDataCollect) CollectData() {
 					collect.receiveChannel <- tempText
 				}
 			case <-collect.ctx.Done():
-				panic(NewTraceWithMsg("CollectData 数据采集线程收到立即退出的通知"))
+				collect.logger.Info("CollectData 数据采集线程收到立即退出的通知，立即退出")
+				return
 			}
 		}
 	}()
@@ -237,13 +230,14 @@ func (collect *BaseDataCollect) ThrowAbnormal(tempError error) {
 // 这个方法是异步的
 func (collect *BaseDataCollect) handleData() {
 	go func() {
+		collect.closeWaitGroup.Add(1)
 		defer func() {
 			//此处group的Done 一定要放在调用外部异常之前 不然会造成外层在等内层Done  内层在等外层的所有执行完  的循环
 			collect.closeWaitGroup.Done()
 			if ee := recover(); ee != nil {
 				if err, isError := ee.(error); isError {
+					// 断开重连
 					collect.ThrowAbnormal(err)
-					collect.logger.Warn("handleData 数据处理线程已经退出")
 				}
 			}
 		}()
@@ -272,7 +266,8 @@ func (collect *BaseDataCollect) handleData() {
 
 			case <-collect.ctx.Done():
 				// 当接收到外层的断开连接的通知之后   退出循环  结束该子线程
-				panic(NewTraceWithMsg("handleData 数据处理线程收到立即退出的通知"))
+				collect.logger.Warn("handleData 数据处理线程收到立即退出的通知，立即退出")
+				return
 			}
 		}
 	}()
