@@ -2,6 +2,7 @@ package Converters
 
 import (
 	"encoding/json"
+	"reflect"
 	"strconv"
 )
 
@@ -56,6 +57,17 @@ func StringToInt64(arg string) int64 {
 	}
 }
 
+func StructToMap(obj interface{}) map[string]interface{} {
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+
+	var data = make(map[string]interface{})
+	for i := 0; i < t.NumField(); i++ {
+		data[t.Field(i).Name] = v.Field(i).Interface()
+	}
+	return data
+}
+
 func Float64ToString(arg float64) string {
 	return strconv.FormatFloat(arg, 'f', -1, 64)
 }
@@ -66,5 +78,20 @@ func StringToInt(arg string) int {
 		return 0
 	} else {
 		return value
+	}
+}
+
+func SimpleInterfaceToString(arg interface{}) string {
+	switch arg.(type) {
+	case int:
+		return IntToString(arg.(int))
+	case int64:
+		return Int64ToString(arg.(int64))
+	case float64:
+		return Float64ToString(arg.(float64))
+	case string:
+		return arg.(string)
+	default:
+		return ""
 	}
 }

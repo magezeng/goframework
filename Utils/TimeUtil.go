@@ -11,7 +11,7 @@ import (
  Get a epoch time
   eg: 1521221737.376
 */
-func EpochTime() string {
+func EpochTimeNow() string {
 	millisecond := time.Now().UnixNano() / 1000000
 	epoch := strconv.Itoa(int(millisecond))
 	epochBytes := []byte(epoch)
@@ -23,8 +23,12 @@ func EpochTime() string {
  Get a iso time
   eg: 2018-03-16T18:02:48.284Z
 */
-func IsoTime() string {
-	utcTime := time.Now().UTC()
+func IsoTimeNow() string {
+	return TimeToIso(time.Now())
+}
+
+func TimeToIso(t time.Time) string {
+	utcTime := t.UTC()
 	iso := utcTime.String()
 	isoBytes := []byte(iso)
 	iso = string(isoBytes[:10]) + "T" + string(isoBytes[11:23]) + "Z"
