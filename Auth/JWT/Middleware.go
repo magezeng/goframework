@@ -19,7 +19,7 @@ func Middleware() gin.HandlerFunc {
 		}
 
 		j := NewJWT()
-		// parseToken 解析token包含的信息
+		// parseToken 解析token包含的信息，判断是否过期，有效性等
 		claims, err := j.ParseToken(token)
 		if err != nil {
 			if err == TokenExpired {

@@ -2,9 +2,9 @@ package Database
 
 import (
 	"errors"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"sync"
 	"tipu.com/go-framework/Config"
 	"tipu.com/go-framework/Models"
@@ -47,7 +47,7 @@ func (d *Database) GetEngineMap() (engineMap map[string]*gorm.DB) {
 
 func (d *Database) getConnectStr(engineName string) (connectStr string, err error) {
 	conf := Models.Config{}
-	err = Config.GetInstance().Load(&conf, "./config.yml")
+	err = Config.GetInstance().MustGetData(&conf, "./config.yml")
 	if err != nil {
 		return
 	}
@@ -68,7 +68,7 @@ func (d *Database) getEngine(engineName string) (engine *gorm.DB, err error) {
 	if err != nil {
 		err = errors.New("数据库连接失败: " + err.Error())
 		engine = nil
-	}else{
+	} else {
 		engine.LogMode(true)
 	}
 	return

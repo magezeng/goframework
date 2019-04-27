@@ -18,9 +18,24 @@ func NewJWT() *JWT {
 }
 
 // CreateToken 生成一个Token
-func (j *JWT) CreateToken(claims CustomClaims) (string, error) {
+func (j *JWT) CreateToken(id uint64, name string) (string, error) {
+	// 暂时还没有邮箱和电话
+	// 邮箱由于发送邮件
+	claims := j.createCustomClaims(id, name, "test@tipu.com", "tipu_tel")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(j.SecretKey)
+}
+
+func (j *JWT) createCustomClaims(id uint64, name string, email string, phone string) CustomClaims {
+	return CustomClaims{
+		id,
+		name,
+		phone,
+		email,
+		jwt.StandardClaims{
+			ExpiresAt: int64(time.Now().Unix() + 3600), // 过期时间 一小时
+		},
+	}
 }
 
 // ParseToken 解析Token
@@ -48,7 +63,7 @@ func (j *JWT) ParseToken(tokenString string) (*CustomClaims, error) {
 	return nil, TokenInvalid
 }
 
-// RefreshToken 更新Token
+// RefreshToken 更新Token，增加一个小时的过期时间
 func (j *JWT) RefreshToken(tokenString string) (string, error) {
 	jwt.TimeFunc = func() time.Time {
 		return time.Unix(0, 0)
@@ -62,7 +77,7 @@ func (j *JWT) RefreshToken(tokenString string) (string, error) {
 	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
 		jwt.TimeFunc = time.Now
 		claims.StandardClaims.ExpiresAt = time.Now().Add(1 * time.Hour).Unix()
-		return j.CreateToken(*claims)
+		return j.CreateToken(claims.ID, claims.Name)
 	}
 	return "", TokenInvalid
 }
