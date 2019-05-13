@@ -1,53 +1,47 @@
 package Database
+// 这个模块应该是被动接受了config位置后再去读文件
+// 自己不能默认config位置
 
 import (
 	"errors"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"sync"
 	"tipu.com/go-framework/Config"
 	"tipu.com/go-framework/Models"
 )
 
 var (
-	instance *Database
-	once     sync.Once
+	instance = make(map[string]*gorm.DB)
 )
 
-type Database struct {
-	// 这个Map每种数据库只保持一个连接
-	engineMap map[string]*gorm.DB
-}
-
-func GetInstance() *Database {
-	once.Do(func() {
-		instance = &Database{engineMap: make(map[string]*gorm.DB)}
-	})
-	return instance
-}
-
-func (d *Database) GetEngine(engineName string) (engine *gorm.DB, err error) {
-	existedEngine, isExist := d.engineMap[engineName]
+func GetEngine(engineName string, configPath ...string) (engine *gorm.DB, err error) {
+	existedEngine, isExist := instance[engineName]
 	if !isExist {
-		engine, err = d.getEngine(engineName)
+		engine, err = getEngine(engineName, configPath...)
 		if err != nil {
 			return
 		}
-		d.engineMap[engineName] = engine
+		instance[engineName] = engine
 	} else {
 		engine = existedEngine
 	}
 	return
 }
 
-func (d *Database) GetEngineMap() (engineMap map[string]*gorm.DB) {
-	return d.engineMap
+func ReleaseEngine(engineName string) (err error) {
+	existedEngine, isExist := instance[engineName]
+	if isExist {
+		err = existedEngine.Close()
+	} else {
+		err = errors.New("请求关闭的数据库未创建！")
+	}
+	return
 }
 
-func (d *Database) getConnectStr(engineName string) (connectStr string, err error) {
+func getConnectStr(engineName string, configPath ...string) (connectStr string, err error) {
 	conf := Models.Config{}
-	err = Config.GetInstance().MustGetData(&conf, "./config.yml")
+	err = Config.GetInstance().MustGetData(&conf, configPath...)
 	if err != nil {
 		return
 	}
@@ -59,8 +53,8 @@ func (d *Database) getConnectStr(engineName string) (connectStr string, err erro
 	return
 }
 
-func (d *Database) getEngine(engineName string) (engine *gorm.DB, err error) {
-	connectStr, err := d.getConnectStr(engineName)
+func getEngine(engineName string, configPath ...string) (engine *gorm.DB, err error) {
+	connectStr, err := getConnectStr(engineName, configPath...)
 	if err != nil {
 		return
 	}

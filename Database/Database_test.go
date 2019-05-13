@@ -18,8 +18,6 @@ db:
     name: sqlite3
 `
 
-var database = GetInstance()
-
 func TestGetConnectStr(t *testing.T) {
 	path, err := genConfigFile("config.yml", configContent)
 	if err != nil {
@@ -27,7 +25,7 @@ func TestGetConnectStr(t *testing.T) {
 		t.FailNow()
 	}
 	conf := Models.Config{}
-	err = Config.GetInstance().Load(&conf, path)
+	err = Config.GetInstance().MustGetData(&conf, path)
 	if err != nil {
 		t.Error()
 		t.Fail()
@@ -36,7 +34,7 @@ func TestGetConnectStr(t *testing.T) {
 }
 
 func TestGetEngine(t *testing.T) {
-	_, err := database.GetEngine(SQLite)
+	_, err := GetEngine(SQLite, "./config.yml")
 	if err != nil {
 		t.Error(err.Error())
 		t.FailNow()
@@ -46,12 +44,12 @@ func TestGetEngine(t *testing.T) {
 }
 
 func TestEngineSingleton(t *testing.T) {
-	engine1, err := database.GetEngine(MySQL)
+	engine1, err := GetEngine(MySQL, "./config.yml")
 	if err != nil {
 		t.Error(err.Error())
 		t.FailNow()
 	}
-	engine2, err := database.GetEngine(MySQL)
+	engine2, err := GetEngine(MySQL, "./config.yml")
 	if err != nil {
 		t.Error(err.Error())
 		t.FailNow()

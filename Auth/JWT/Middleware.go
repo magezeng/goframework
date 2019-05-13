@@ -2,18 +2,17 @@ package JWT
 
 import (
 	"github.com/gin-gonic/gin"
-	"net/http"
+	"github.com/pkg/errors"
+	"tipu.com/go-framework/Code"
+	"tipu.com/go-framework/Models"
 )
 
 // Middleware gin中间件，检查token
 func Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.Request.Header.Get("token")
+		token := c.Request.Header.Get("Authorization")
 		if token == "" {
-			c.JSON(http.StatusOK, gin.H{
-				"status": -1,
-				"msg":    "无权限访问！",
-			})
+			Models.ResultFail(c, Code.UNAUTHORIZED_ERROR, errors.New("无权限访问!"))
 			c.Abort()
 			return
 		}
@@ -23,17 +22,11 @@ func Middleware() gin.HandlerFunc {
 		claims, err := j.ParseToken(token)
 		if err != nil {
 			if err == TokenExpired {
-				c.JSON(http.StatusOK, gin.H{
-					"status": -1,
-					"msg":    "授权已过期！",
-				})
+				Models.ResultFail(c, Code.TOKEN_EXPIRED_ERROR, errors.New("Token已经过期!"))
 				c.Abort()
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{
-				"status": -1,
-				"msg":    err.Error(),
-			})
+			Models.ResultFail(c, Code.TOKEN_ERROR, err)
 			c.Abort()
 			return
 		}

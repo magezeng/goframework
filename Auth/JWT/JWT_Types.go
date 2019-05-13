@@ -7,7 +7,7 @@ import (
 
 // 载荷，可以加一些自己需要的信息
 type CustomClaims struct {
-	ID    uint64 `json:"userId"`
+	ID    uint `json:"userId"`
 	Name  string `json:"name"`
 	Phone string `json:"phone"`
 	Email string `json:"email"`

@@ -18,7 +18,7 @@ func NewJWT() *JWT {
 }
 
 // CreateToken 生成一个Token
-func (j *JWT) CreateToken(id uint64, name string) (string, error) {
+func (j *JWT) CreateToken(id uint, name string) (string, error) {
 	// 暂时还没有邮箱和电话
 	// 邮箱由于发送邮件
 	claims := j.createCustomClaims(id, name, "test@tipu.com", "tipu_tel")
@@ -26,7 +26,7 @@ func (j *JWT) CreateToken(id uint64, name string) (string, error) {
 	return token.SignedString(j.SecretKey)
 }
 
-func (j *JWT) createCustomClaims(id uint64, name string, email string, phone string) CustomClaims {
+func (j *JWT) createCustomClaims(id uint, name string, email string, phone string) CustomClaims {
 	return CustomClaims{
 		id,
 		name,

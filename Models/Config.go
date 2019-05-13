@@ -11,7 +11,13 @@ type HTTPConfig struct {
 	IdleConnTimeout     int `yaml:"idleConnTimeout" json:"idleConnTimeout"`
 }
 
+type Upload struct {
+	Path          string `yaml:"path" json:"path"`
+	MaxFileSizeMB int    `yaml:"maxFileSizeMB" json:"maxFileSizeMB"`
+}
+
 type Config struct {
-	DB     []DBConfig   `yaml:"db" json:"db"`
-	HTTP   HTTPConfig   `yaml:"http" json:"http"`
+	DB     []DBConfig `yaml:"db" json:"db"`
+	HTTP   HTTPConfig `yaml:"http" json:"http"`
+	Upload Upload     `yaml:"upload" json:"upload"`
 }
