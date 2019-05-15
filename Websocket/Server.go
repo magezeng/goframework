@@ -16,7 +16,7 @@ var (
 )
 
 type ServerManager struct {
-	// 现在保持的连接,key为client id
+	// 现在保持的连接,key为token
 	Servers map[string]*Server
 	// 增加客户端的channel
 	RegisterCh chan *Server
@@ -25,8 +25,8 @@ type ServerManager struct {
 }
 
 type Server struct {
-	// 客户端ID
-	ID string
+	// 用户的token，一个token只对应一个连接
+	Token string
 	// 发送数据的连接
 	Conn *websocket.Conn
 	// 发送数据的通道
@@ -97,7 +97,7 @@ func (c *Server) write() {
 				// 写入出错时直接退出，说明SendCh已经被关闭了
 				if !ok {
 					c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-					logger.Info("发送通道已经关闭: ", c.ID)
+					logger.Info("发送通道已经关闭: ", c.Token)
 					return
 				}
 
@@ -107,21 +107,21 @@ func (c *Server) write() {
 				}
 				_, err = w.Write(message)
 				if err != nil {
-					logger.Info("写入数据失败: ", c.ID)
+					logger.Info("写入数据失败: ", c.Token)
 					return
 				}
 				if err := w.Close(); err != nil {
-					logger.Info("关闭writer失败: ", c.ID)
+					logger.Info("关闭writer失败: ", c.Token)
 					return
 				}
 			case <-ticker.C:
 				// 按周期发送ping到浏览器
 				err := c.Conn.WriteMessage(websocket.TextMessage, []byte("ping"))
 				if err != nil {
-					logger.Error("发送ping失败，可能是浏览器端已经离线: ", c.ID)
+					logger.Error("发送ping失败，可能是浏览器端已经离线: ", c.Token)
 					return
 				}
-				logger.Info("发送ping到浏览器", c.ID)
+				logger.Info("发送ping到浏览器", c.Token)
 			}
 		}
 	}()
