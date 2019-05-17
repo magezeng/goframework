@@ -6,23 +6,17 @@ import (
 )
 
 const (
-	pongWait       = 60 * time.Second
-	pingPeriod     = 15 * time.Second
+	// 1分钟没有收到客户端的返回消息，需要释放连接
+	pongWait = 60 * time.Second
+	// 服务端发起ping的时间间隔
+	pingPeriod = 15 * time.Second
+	// 消息最大长度，字节
 	maxMessageSize = 512
 )
 
 var (
 	instance = GetInstance()
 )
-
-type ServerManager struct {
-	// 现在保持的连接,key为token
-	Servers map[string]*Server
-	// 增加客户端的channel
-	RegisterCh chan *Server
-	// 断开客户端的channel
-	UnregisterCh chan *Server
-}
 
 type Server struct {
 	// 用户的token，一个token只对应一个连接
@@ -46,15 +40,14 @@ func (c *Server) read() {
 		c.Conn.SetReadDeadline(time.Now().Add(pongWait));
 		c.Conn.SetReadLimit(maxMessageSize)
 		// 此API目前浏览器不支持，需要采用判断消息字符串的方式进行
-		//// 处理ping的闭包函数，设置deadline并且写入Pong
+		//// 处理pong的闭包函数，刷新deadline
 		//handlePong := func(string) error {
 		//	c.Conn.SetReadDeadline(time.Now().Add(pongWait));
 		//	return nil
 		//}
-		// 最小间隔15s，至少会有一个ping发送过来
+		// 最小间隔15s，至少会有一个pong从浏览器发送过来，否则认为已经断联
 		// c.Conn.SetPongHandler(handlePong)
 		defer func() {
-			// 不进行读取后，进行释放
 			instance.UnregisterCh <- c
 			c.Conn.Close()
 		}()
@@ -62,7 +55,7 @@ func (c *Server) read() {
 		for {
 			// 目前是出错了退出
 			msgType, msg, err := c.Conn.ReadMessage()
-			// TODO: 出错的展示
+			// going away就意味着客户端已经释放了连接，服务器端因此也需要释放
 			if err != nil {
 				logger.Warn("读取消息出错，退出!", err)
 				break
@@ -94,7 +87,7 @@ func (c *Server) write() {
 		for {
 			select {
 			case message, ok := <-c.SendCh:
-				// 写入出错时直接退出，说明SendCh已经被关闭了
+				// 写入出错时直接退出，说明SendCh已经被manager关闭了
 				if !ok {
 					c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 					logger.Info("发送通道已经关闭: ", c.Token)

@@ -14,6 +14,15 @@ var (
 	logger          *Logger.Logger
 )
 
+type ServerManager struct {
+	// 现在保持的连接,key为token
+	Servers map[string]*Server
+	// 增加客户端的channel
+	RegisterCh chan *Server
+	// 断开客户端的channel
+	UnregisterCh chan *Server
+}
+
 func GetInstance() *ServerManager {
 	once.Do(func() {
 		manager := &ServerManager{
@@ -31,11 +40,12 @@ func GetInstance() *ServerManager {
 }
 
 // 运行一个新的服务端
-func (m *ServerManager) StartNewServer(key string, w http.ResponseWriter, r *http.Request, h http.Header) (err error) {
+func (m *ServerManager) StartServer(token string, w http.ResponseWriter, r *http.Request, h http.Header) (err error) {
+	// TODO: 重连机制的可能性？
 	conn, err := (
 		&websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
+			ReadBufferSize:  2048,
+			WriteBufferSize: 2048,
 			// 设置跨域
 			CheckOrigin: func(r *http.Request) bool { return true },
 			// 设置握手超时的时间
@@ -45,15 +55,12 @@ func (m *ServerManager) StartNewServer(key string, w http.ResponseWriter, r *htt
 	if err != nil {
 		return
 	}
-	//// 对于同一个用户来说，也有可能开了多个连接，所以此处不能用用户id来作为key
-	//uuidModel, _ := uuid.NewV4()
-	//id = uuidModel.String()
-
-	server := &Server{Token: key, Conn: conn, SendCh: make(chan []byte)}
+	server := &Server{Token: token, Conn: conn, SendCh: make(chan []byte)}
 	// 下面都是异步操作
 	server.start()
 	// 注册到server集合中
 	instance.RegisterCh <- server
+
 	return
 }
 
@@ -86,4 +93,9 @@ func (m *ServerManager) startManager() {
 			}
 		}
 	}()
+}
+
+// 根据token取得连接
+func (m *ServerManager) getServer(token string) *Server {
+	return m.Servers[token]
 }
