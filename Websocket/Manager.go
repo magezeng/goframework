@@ -44,8 +44,9 @@ func (m *ServerManager) StartServer(token string, w http.ResponseWriter, r *http
 	// TODO: 重连机制的可能性？
 	conn, err := (
 		&websocket.Upgrader{
-			ReadBufferSize:  2048,
-			WriteBufferSize: 2048,
+			EnableCompression: true,
+			ReadBufferSize: 1024 * 1024 * 1,
+			WriteBufferSize: 1024 * 1024 * 1,
 			// 设置跨域
 			CheckOrigin: func(r *http.Request) bool { return true },
 			// 设置握手超时的时间
@@ -55,7 +56,8 @@ func (m *ServerManager) StartServer(token string, w http.ResponseWriter, r *http
 	if err != nil {
 		return
 	}
-	server := &Server{Token: token, Conn: conn, SendCh: make(chan []byte)}
+	// 设置缓冲区的大小为10条
+	server := &Server{Token: token, Conn: conn, BufferCh:make(chan string, bufferSize), lock:new(sync.Mutex)}
 	// 下面都是异步操作
 	server.start()
 	// 注册到server集合中
@@ -67,8 +69,7 @@ func (m *ServerManager) StartServer(token string, w http.ResponseWriter, r *http
 // 写入数据到指定的server连接中
 func (m *ServerManager) WriteMessage(token string, msg string) (err error) {
 	if server, ok := m.Servers[token]; ok {
-		server.SendCh <- []byte(msg)
-		logger.Info("发送数据: ", server.Token)
+		server.BufferCh <- msg
 	}
 	return
 }
@@ -86,7 +87,7 @@ func (m *ServerManager) startManager() {
 			case server := <-m.UnregisterCh:
 				if _, ok := m.Servers[server.Token]; ok {
 					// 此时不需要发送信息
-					close(server.SendCh)
+					close(server.BufferCh)
 					delete(m.Servers, server.Token)
 					logger.Info("连接关闭成功: ", server.Token)
 				}
