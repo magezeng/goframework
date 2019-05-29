@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// TODO: 这个东西使用的意义
+
 const MaxStackDepth = 50
 
 // stack 新的错误结构

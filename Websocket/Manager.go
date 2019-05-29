@@ -41,32 +41,28 @@ func GetInstance() *ServerManager {
 
 // 运行一个新的服务端
 func (m *ServerManager) StartServer(token string, w http.ResponseWriter, r *http.Request, h http.Header) (err error) {
-	// TODO: 重连机制的可能性？
-	conn, err := (
-		&websocket.Upgrader{
-			EnableCompression: true,
-			ReadBufferSize: 1024 * 1024 * 1,
-			WriteBufferSize: 1024 * 1024 * 1,
-			// 设置跨域
-			CheckOrigin: func(r *http.Request) bool { return true },
-			// 设置握手超时的时间
-			HandshakeTimeout: 1 * time.Minute,
-			Subprotocols:     []string{r.Header.Get("Sec-WebSocket-Protocol")},
-		}).Upgrade(w, r, h)
+	conn, err := (&websocket.Upgrader{
+		EnableCompression: true,
+		ReadBufferSize:    1024 * 1024 * 1,
+		WriteBufferSize:   1024 * 1024 * 1,
+		// 设置跨域
+		CheckOrigin: func(r *http.Request) bool { return true },
+		// 设置握手超时的时间
+		HandshakeTimeout: 1 * time.Minute,
+		Subprotocols:     []string{r.Header.Get("Sec-WebSocket-Protocol")},
+	}).Upgrade(w, r, h)
 	if err != nil {
 		return
 	}
-	// 设置缓冲区的大小为10条
-	server := &Server{Token: token, Conn: conn, BufferCh:make(chan string, bufferSize), lock:new(sync.Mutex)}
-	// 下面都是异步操作
-	server.start()
+	// 设置缓冲区的大小，短token取最后30位
+	server := &Server{Token: token, ShortToken: token[len(token)-20:], Conn: conn, BufferCh: make(chan string, bufferSize), lock: new(sync.Mutex)}
 	// 注册到server集合中
-	instance.RegisterCh <- server
+	managerInstance.RegisterCh <- server
 
 	return
 }
 
-// 写入数据到指定的server连接中
+// WriteMessage 写入数据到指定的server连接中
 func (m *ServerManager) WriteMessage(token string, msg string) (err error) {
 	if server, ok := m.Servers[token]; ok {
 		server.BufferCh <- msg
@@ -74,7 +70,7 @@ func (m *ServerManager) WriteMessage(token string, msg string) (err error) {
 	return
 }
 
-// 运行客户端管理器
+// startManager 运行连接管理器
 func (m *ServerManager) startManager() {
 	go func() {
 		for {
@@ -82,21 +78,17 @@ func (m *ServerManager) startManager() {
 			// 连接信号
 			case server := <-m.RegisterCh:
 				m.Servers[server.Token] = server
-				logger.Info("连接创建成功: ", server.Token)
+				server.start()
+				logger.Info("连接创建成功: ", server.ShortToken)
 			// 断开信号
 			case server := <-m.UnregisterCh:
 				if _, ok := m.Servers[server.Token]; ok {
 					// 此时不需要发送信息
 					close(server.BufferCh)
 					delete(m.Servers, server.Token)
-					logger.Info("连接关闭成功: ", server.Token)
+					logger.Info("连接关闭成功: ", server.ShortToken)
 				}
 			}
 		}
 	}()
-}
-
-// 根据token取得连接
-func (m *ServerManager) getServer(token string) *Server {
-	return m.Servers[token]
 }

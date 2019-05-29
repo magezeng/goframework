@@ -19,7 +19,6 @@ func unzip(path, target string) error {
 	if !isZip(path) {
 		return errors.New("不是一个有效的zip压缩文件！")
 	}
-	// TODO: 如果有安装unzip，7zip等，直接解压缩
 	// 否则用原生解压缩方式
 	reader, err := zip.OpenReader(path)
 	if err != nil {

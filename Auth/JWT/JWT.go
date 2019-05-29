@@ -33,7 +33,7 @@ func (j *JWT) createCustomClaims(id uint, name string, email string, phone strin
 		phone,
 		email,
 		jwt.StandardClaims{
-			ExpiresAt: int64(time.Now().Unix() + 3600), // 过期时间 一小时
+			ExpiresAt: int64(time.Now().Unix() + 8*3600), // 过期时间 八小时
 		},
 	}
 }
@@ -55,6 +55,8 @@ func (j *JWT) ParseToken(tokenString string) (*CustomClaims, error) {
 			} else {
 				return nil, TokenInvalid
 			}
+		} else {
+			return nil, Unknown
 		}
 	}
 	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {

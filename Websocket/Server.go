@@ -11,7 +11,7 @@ const (
 	// 1.5分钟没有收到客户端的返回消息，需要释放连接
 	pongWait = 90 * time.Second
 	// 服务端发起ping的时间间隔
-	pingPeriod = 15 * time.Second
+	pingPeriod = 30 * time.Second
 	// 消息读取最大长度，字节
 	maxMessageSize = 2048
 	// 打包数据的发送频率
@@ -20,11 +20,9 @@ const (
 	bufferSize = 500
 )
 
-var (
-	instance = GetInstance()
-)
-
 type Server struct {
+	// 用来做记录的短token
+	ShortToken string
 	// 用户的token，一个token只对应一个连接
 	Token string
 	// 发送数据的连接
@@ -37,6 +35,7 @@ type Server struct {
 
 // start 启动ws服务端
 func (s *Server) start() {
+	s.Conn.SetReadLimit(maxMessageSize)
 	s.read()
 	s.write()
 }
@@ -44,40 +43,50 @@ func (s *Server) start() {
 // read 从ws连接中读取数据
 func (s *Server) read() {
 	go func() {
+		defer func() {
+			// 必须释放而不管中间关闭发生的错误
+			_ = s.Conn.Close()
+			GetInstance().UnregisterCh <- s
+		}()
+
 		// 设置读取的deadline
-		s.Conn.SetReadDeadline(time.Now().Add(pongWait));
-		s.Conn.SetReadLimit(maxMessageSize)
-		// 此API目前浏览器不支持，需要采用判断消息字符串的方式进行
+		err := s.Conn.SetReadDeadline(time.Now().Add(pongWait))
+		if err != nil {
+			logger.Error("首次设置ReadDeadline失败: ", err, s.ShortToken)
+			return
+		}
+		// Pong Handler目前浏览器不支持，无法接收ping帧，但是服务端相互连接可以支持
+		// 这里采用判断消息字符串的方式进行
+
 		//// 处理pong的闭包函数，刷新deadline
 		//handlePong := func(string) error {
 		//	c.Conn.SetReadDeadline(time.Now().Add(pongWait));
 		//	return nil
 		//}
-		// 最小间隔15s，至少会有一个pong从浏览器发送过来，否则认为已经断联
 		// c.Conn.SetPongHandler(handlePong)
-		defer func() {
-			instance.UnregisterCh <- s
-			s.Conn.Close()
-		}()
 
 		for {
-			// 目前是出错了退出
+			// 目前是出了任何错退出，包括1001错误
 			msgType, msg, err := s.Conn.ReadMessage()
-			// going away就意味着客户端已经释放了连接，服务器端因此也需要释放
 			if err != nil {
-				logger.Warn("读取消息出错，退出!", err)
-				break
+				// websocket.IsUnexpectedCloseError(websocket.CloseGoingAway)
+				logger.Warn("读取消息出错: ", err, s.ShortToken)
+				return
 			}
 
 			switch msgType {
 			case websocket.TextMessage:
-				// TODO: 对收到消息的处理
-				logger.Info("收到了浏览器发来的消息: ", string(msg))
+				// 目前只有可能收到浏览器发来的pong而不会有其它消息
+				logger.Info("收到了浏览器发来的消息: ", string(msg), s.ShortToken)
 				if string(msg) == "pong" {
-					s.Conn.SetReadDeadline(time.Now().Add(pongWait));
+					err = s.Conn.SetReadDeadline(time.Now().Add(pongWait))
+					if err != nil {
+						logger.Error("刷新ReadDeadline失败: ", err, s.ShortToken)
+						return
+					}
 				}
 			default:
-				logger.Warn("不支持的消息类型，忽略!", msgType)
+				logger.Warn("不支持的消息类型: ", msgType, s.ShortToken)
 			}
 		}
 	}()
@@ -88,10 +97,11 @@ func (s *Server) write() {
 	go func() {
 		ticker := time.NewTicker(pingPeriod)
 		messageTicker := time.NewTicker(messageWritePeriod)
+
 		defer func() {
 			ticker.Stop()
 			messageTicker.Stop()
-			s.Conn.Close()
+			_ = s.Conn.Close()
 		}()
 
 		for {
@@ -99,10 +109,10 @@ func (s *Server) write() {
 			case <-ticker.C:
 				err := s.writeMessageSync(websocket.TextMessage, "ping")
 				if err != nil {
-					logger.Error("发送ping失败，可能是浏览器端已经离线: ", s.Token)
+					logger.Error("发送ping失败，可能是浏览器端已经离线: ", s.ShortToken)
 					return
 				}
-				logger.Info("发送ping到浏览器", s.Token)
+				logger.Info("发送ping到浏览器", s.ShortToken)
 			case <-messageTicker.C:
 				s.packageMessage()
 			}
@@ -115,18 +125,15 @@ func (s *Server) packageMessage() {
 		go func() {
 			builder := strings.Builder{}
 			chLength := len(s.BufferCh)
-			// 读取当前内部的数量的一批数据，默认是10个
+			// 读取当前通道内部的数量的一批数据
 			for i := 0; i < chLength; i++ {
 				c := <-s.BufferCh
 				builder.WriteString(c + "\n")
 			}
-			if builder.String() == "" {
-				return
-			}
 			// 如果有消息才写入，否则什么都不做
 			err := s.writeMessageSync(websocket.TextMessage, builder.String())
 			if err != nil {
-				logger.Info("写入数据失败: ", s.Token)
+				logger.Info("写入数据失败: ", s.ShortToken)
 				return
 			}
 
@@ -140,6 +147,6 @@ func (s *Server) writeMessageSync(messageType int, message string) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	err = s.Conn.WriteMessage(messageType, []byte(message))
-	logger.Info("写入了数据: ", message)
+	logger.Info("准备写入数据: ", message, s.ShortToken)
 	return
 }

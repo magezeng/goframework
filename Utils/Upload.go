@@ -19,7 +19,7 @@ func UploadFile(file *multipart.FileHeader, path string) error {
 }
 
 //// 上传多个文件，保存到path指定的位置上
-//// TODO: 根据webuploader传递的List创建文件层级结构
+//// TODO: 根据前端传递的List创建文件层级结构，然后再保存文件
 //func UploadFiles(c *gin.Context, path string) {
 //	form, _ := c.MultipartForm()
 //	files := form.File["upload[]"]
@@ -32,7 +32,6 @@ func UploadFile(file *multipart.FileHeader, path string) error {
 //			return
 //		}
 //	}
-//	// TODO: 这个长度不一定正确
 //	Models.ResultSuccessWithMsg(c, nil, fmt.Sprintf("全部文件上传成功，共上传了%d个文件", len(files)))
 //}
 

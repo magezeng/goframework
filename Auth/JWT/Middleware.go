@@ -12,7 +12,7 @@ func Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Request.Header.Get("Authorization")
 		if token == "" {
-			// 可能是从websocket过来的
+			// 可能是从websocket过来的，此时就不在Authorization里面
 			token = c.Request.Header.Get("Sec-WebSocket-Protocol")
 		}
 		if token == "" {
@@ -34,7 +34,6 @@ func Middleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		// 继续交由下一个路由处理,并将解析出的信息传递下去
 		c.Set("token", token)
 		c.Set("claims", claims)
 	}
