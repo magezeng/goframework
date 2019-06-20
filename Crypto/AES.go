@@ -3,14 +3,21 @@ package Crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"github.com/pkg/errors"
 )
 
 type AES struct {
 }
 
-// Encrypt AES用gcm模式加密
-func (AES) Encrypt(originData string) (result []byte, err error) {
-	block, err := aes.NewCipher(secretKey)
+// Encrypt AES用gcm模式默认加密
+func (a AES) Encrypt(originData string) (result []byte, err error) {
+	return a.EncryptWithCustomData(originData, DEFAULT_SECRETKEY, DEFAULT_SECRET_MESSAGE)
+}
+
+func (a AES) EncryptWithCustomData(originData string, secretKey string, nonce string) (result []byte, err error) {
+	// 获得有效的aes密钥
+	key := getValidAESKey(secretKey)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return
 	}
@@ -19,14 +26,28 @@ func (AES) Encrypt(originData string) (result []byte, err error) {
 	if err != nil {
 		return
 	}
+	// 没有nonce时生成新的nonce
+	var nonceParam []byte
+	if nonce == "" {
+		nonceParam, err = generateNonce(uint64(gcm.NonceSize()))
+		if err != nil {
+			return
+		}
+	} else {
+		nonceParam = []byte(nonce)
+	}
 
-	result = gcm.Seal(nil, secretMessage, []byte(originData), nil)
+	result = gcm.Seal(nonceParam, nonceParam, []byte(originData), nil)
 	return
 }
 
 // Encrypt AES用gcm模式解密
-func (AES) Decrypt(encryptedData string) (result []byte, err error) {
-	block, err := aes.NewCipher(secretKey)
+func (a AES) Decrypt(encryptedData string) (result []byte, err error) {
+	return a.DecryptWithCustomData(encryptedData, DEFAULT_SECRETKEY, DEFAULT_SECRET_MESSAGE)
+}
+
+func (a AES) DecryptWithCustomData(encryptedData string, secretKey string, nonce string) (result []byte, err error) {
+	block, err := aes.NewCipher([]byte(secretKey))
 	if err != nil {
 		return
 	}
@@ -36,7 +57,17 @@ func (AES) Decrypt(encryptedData string) (result []byte, err error) {
 		return
 	}
 
-	result, err = gcm.Open(nil, secretMessage, []byte(encryptedData), nil)
+	encryptedByte := []byte(encryptedData)
+
+	nonceSize := gcm.NonceSize()
+	if len(encryptedByte) < nonceSize {
+		err = errors.New("加密字节太短!")
+		return
+	}
+
+	nonceParam, ciphertext := encryptedByte[:nonceSize], encryptedByte[nonceSize:]
+
+	result, err = gcm.Open(nil, nonceParam, ciphertext, nil)
 	if err != nil {
 		return
 	}
@@ -44,7 +75,7 @@ func (AES) Decrypt(encryptedData string) (result []byte, err error) {
 }
 
 //AES key必须是16字节 24字节 32字节中的一种
-func checkValidAESKey(strKey string) []byte {
+func getValidAESKey(strKey string) []byte {
 	keyLen := len(strKey)
 	arrKey := []byte(strKey)
 	if keyLen >= 32 {
