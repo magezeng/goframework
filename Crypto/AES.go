@@ -3,7 +3,7 @@ package Crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"github.com/pkg/errors"
+	"encoding/hex"
 )
 
 type AES struct {
@@ -34,10 +34,13 @@ func (a AES) EncryptWithCustomData(originData string, secretKey string, nonce st
 			return
 		}
 	} else {
-		nonceParam = []byte(nonce)
+		nonceParam, err = hex.DecodeString(nonce)
+		if err != nil {
+			return
+		}
 	}
 
-	result = gcm.Seal(nonceParam, nonceParam, []byte(originData), nil)
+	result = gcm.Seal(nil, nonceParam, []byte(originData), nil)
 	return
 }
 
@@ -57,15 +60,15 @@ func (a AES) DecryptWithCustomData(encryptedData string, secretKey string, nonce
 		return
 	}
 
-	encryptedByte := []byte(encryptedData)
-
-	nonceSize := gcm.NonceSize()
-	if len(encryptedByte) < nonceSize {
-		err = errors.New("加密字节太短!")
+	ciphertext, err := hex.DecodeString(encryptedData)
+	if err != nil {
 		return
 	}
 
-	nonceParam, ciphertext := encryptedByte[:nonceSize], encryptedByte[nonceSize:]
+	nonceParam, err := hex.DecodeString(nonce)
+	if err != nil {
+		return
+	}
 
 	result, err = gcm.Open(nil, nonceParam, ciphertext, nil)
 	if err != nil {

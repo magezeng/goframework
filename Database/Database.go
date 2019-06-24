@@ -1,4 +1,5 @@
 package Database
+
 // 这个模块应该是被动接受了config位置后再去读文件
 // 自己不能默认config位置
 
@@ -63,7 +64,7 @@ func getEngine(engineName string, configPath ...string) (engine *gorm.DB, err er
 		err = errors.New("数据库连接失败: " + err.Error())
 		engine = nil
 	} else {
-		engine.LogMode(true)
+		engine.LogMode(false)
 	}
 	return
 }

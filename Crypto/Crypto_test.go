@@ -29,3 +29,12 @@ func TestAES_EncryptAndDecrypt(t *testing.T) {
 	}
 	t.Logf("[解密后的字符串] %s", string(result))
 }
+
+func TestAES_DecryptWithCustomData(t *testing.T) {
+	encryptedData := "8656e959df0121420801abccb779e41dc4720fcf751493c5cbc9f86499ca9edddac205effe356ea79284f474c2e6bfa5444285475d5ac34749d42b2158f185"
+	result, err := aesInstance.DecryptWithCustomData(encryptedData, "AES256Key-32Characters1234567890", "bb8ef84243d2ee95a41c6c57")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(result))
+}
