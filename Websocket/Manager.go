@@ -1,8 +1,8 @@
 package Websocket
 
 import (
-	"../Logger"
 	"github.com/gorilla/websocket"
+	"github.com/magezeng/goframework/Logger"
 	"net/http"
 	"sync"
 	"time"

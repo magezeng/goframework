@@ -1,9 +1,9 @@
 package JWT
 
 import (
-	"../../Code"
-	"../../Models"
 	"github.com/gin-gonic/gin"
+	"github.com/magezeng/goframework/Code"
+	"github.com/magezeng/goframework/Models"
 	"github.com/pkg/errors"
 )
 

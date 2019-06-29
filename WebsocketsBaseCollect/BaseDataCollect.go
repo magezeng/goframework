@@ -1,14 +1,14 @@
 package WebsocketsBaseCollect
 
 import (
-	"../Logger"
-	"../Retry"
-	"../Utils"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/magezeng/goframework/Logger"
+	"github.com/magezeng/goframework/Retry"
+	"github.com/magezeng/goframework/Utils"
 	"net/url"
 	"sync"
 	"time"
