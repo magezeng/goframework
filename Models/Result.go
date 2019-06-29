@@ -1,8 +1,8 @@
 package Models
 
 import (
+	"../Code"
 	"fmt"
-	"github.com/Magezeng/go-framework/Code"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )

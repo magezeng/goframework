@@ -1,7 +1,7 @@
 package Websocket
 
 import (
-	"github.com/Magezeng/go-framework/Logger"
+	"../Logger"
 	"github.com/gorilla/websocket"
 	"net/http"
 	"sync"

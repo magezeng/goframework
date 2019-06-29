@@ -1,7 +1,7 @@
 package Utils
 
 import (
-	"github.com/Magezeng/go-framework/Converters"
+	"../Converters"
 	"github.com/pkg/errors"
 	"strconv"
 	"time"
