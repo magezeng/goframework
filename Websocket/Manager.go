@@ -1,11 +1,11 @@
 package Websocket
 
 import (
+	"github.com/Magezeng/go-framework/Logger"
 	"github.com/gorilla/websocket"
 	"net/http"
 	"sync"
 	"time"
-	"tipu.com/go-framework/Logger"
 )
 
 var (

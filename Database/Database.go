@@ -5,11 +5,11 @@ package Database
 
 import (
 	"errors"
+	"github.com/Magezeng/go-framework/Config"
+	"github.com/Magezeng/go-framework/Models"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"tipu.com/go-framework/Config"
-	"tipu.com/go-framework/Models"
 )
 
 var (

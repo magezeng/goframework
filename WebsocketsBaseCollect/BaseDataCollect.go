@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Magezeng/go-framework/Logger"
+	"github.com/Magezeng/go-framework/Retry"
+	"github.com/Magezeng/go-framework/Utils"
 	"github.com/gorilla/websocket"
 	"net/url"
 	"sync"
 	"time"
-	"tipu.com/go-framework/Logger"
-	"tipu.com/go-framework/Retry"
-	"tipu.com/go-framework/Utils"
 )
 
 type BaseDataCollect struct {

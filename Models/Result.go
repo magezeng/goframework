@@ -2,9 +2,9 @@ package Models
 
 import (
 	"fmt"
+	"github.com/Magezeng/go-framework/Code"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"tipu.com/go-framework/Code"
 )
 
 // Result 返回结果时的通用结构

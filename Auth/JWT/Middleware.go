@@ -1,10 +1,10 @@
 package JWT
 
 import (
+	"github.com/Magezeng/go-framework/Code"
+	"github.com/Magezeng/go-framework/Models"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	"tipu.com/go-framework/Code"
-	"tipu.com/go-framework/Models"
 )
 
 // Middleware gin中间件，检查token
