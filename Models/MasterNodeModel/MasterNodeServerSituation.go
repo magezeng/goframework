@@ -15,7 +15,7 @@ type MasterNodeServerSituation struct {
 	MemUsage  float32                                   `json:"mem_usage"`
 	DiskUsage float32                                   `json:"disk_usage"`
 	Nodes     map[string]MasterNodeModel.CoinMasterNode `json:"nodes"`
-	lock      *sync.RWMutex
+	Lock      *sync.RWMutex
 }
 
 func (serverSituation MasterNodeServerSituation) String() string {
@@ -24,28 +24,28 @@ func (serverSituation MasterNodeServerSituation) String() string {
 }
 
 func (serverSituation MasterNodeServerSituation) SetSyncTable(coinName string, info MasterNodeModel.CoinMasterNode) {
-	serverSituation.lock.Lock()
-	defer serverSituation.lock.Unlock()
+	serverSituation.Lock.Lock()
+	defer serverSituation.Lock.Unlock()
 	serverSituation.Nodes[coinName] = info
 }
 
 func (serverSituation MasterNodeServerSituation) GetFromSyncTable(coinName string, id uint) MasterNodeModel.CoinMasterNode {
-	serverSituation.lock.RLock()
-	defer serverSituation.lock.RUnlock()
+	serverSituation.Lock.RLock()
+	defer serverSituation.Lock.RUnlock()
 	return serverSituation.Nodes[coinName]
 }
 
 func (serverSituation MasterNodeServerSituation) UpdateProcessStatusToSyncTable(coinName string, processStatus int8) {
-	serverSituation.lock.Lock()
-	defer serverSituation.lock.Unlock()
+	serverSituation.Lock.Lock()
+	defer serverSituation.Lock.Unlock()
 	masterNodeInfo := serverSituation.Nodes[coinName]
 	masterNodeInfo.ProcessStatus = processStatus
 	serverSituation.Nodes[coinName] = masterNodeInfo
 }
 
 func (serverSituation MasterNodeServerSituation) UpdateStartAtToSyncTable(coinName string, startAt time.Time) {
-	serverSituation.lock.Lock()
-	defer serverSituation.lock.Unlock()
+	serverSituation.Lock.Lock()
+	defer serverSituation.Lock.Unlock()
 	masterNodeInfo := serverSituation.Nodes[coinName]
 	masterNodeInfo.StartAt = startAt
 	serverSituation.Nodes[coinName] = masterNodeInfo
