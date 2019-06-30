@@ -1,16 +1,10 @@
 package MasterNodeModel
 
 import (
-	"MasterNodeManager/MasterNodeService/Config"
 	"fmt"
 	"github.com/magezeng/goframework/Models/MasterNodeModel"
 	"sync"
 	"time"
-)
-
-var (
-	once                              sync.Once
-	MasterNodeServerSituationInstance MasterNodeServerSituation
 )
 
 // 心跳数据，实际上就是serverStatus + masterNodeInfo
@@ -55,22 +49,4 @@ func (serverSituation MasterNodeServerSituation) UpdateStartAtToSyncTable(coinNa
 	masterNodeInfo := serverSituation.Nodes[coinName]
 	masterNodeInfo.StartAt = startAt
 	serverSituation.Nodes[coinName] = masterNodeInfo
-}
-func init() {
-	once.Do(func() {
-		initMasterNodeServerSituationInstance()
-	})
-}
-
-func loadMasterNodeServerSituationFromDisk() MasterNodeServerSituation {
-	// TODO 要实现数据的本地化，不然重启过后全部得要重新来
-	return MasterNodeServerSituation{}
-}
-
-func initMasterNodeServerSituationInstance() {
-	MasterNodeServerSituationInstance = loadMasterNodeServerSituationFromDisk()
-	if _, ok := Config.ConfigData["debug"]; ok {
-		MasterNodeServerSituationInstance.IP = "127.0.0.1"
-	}
-	MasterNodeServerSituationInstance.lock = new(sync.RWMutex)
 }
