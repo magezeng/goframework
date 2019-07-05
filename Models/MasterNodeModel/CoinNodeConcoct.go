@@ -2,6 +2,7 @@ package MasterNodeModel
 
 type Command struct {
 	Key  string
+	Path string
 	Args []string
 }
 
