@@ -8,7 +8,7 @@ type Command struct {
 
 type CoinNodeConcoct struct {
 	// 币种在中心数据库内的编号
-	CoinIndex uint
+	MasterNodeId uint
 	// 币种名称
 	CoinName string
 	// 节点安装文件URL
