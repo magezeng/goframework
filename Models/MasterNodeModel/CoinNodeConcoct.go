@@ -7,7 +7,7 @@ type Command struct {
 }
 
 type CoinNodeConcoct struct {
-	// 币种在中心数据库内的编号
+	// 节点在数据库内的编号
 	MasterNodeId uint
 	// 币种名称
 	CoinName string
@@ -17,4 +17,12 @@ type CoinNodeConcoct struct {
 	FileHandleCommand Command
 	// 节点端不需要关心具体获取状态的方式是什么，只需要按照中心传过来的命令运行，将运行结果回传到中心即可
 	SituationCommand map[string]Command
+}
+type MasterNodeSituation struct {
+	// 节点在数据库内的编号
+	MasterNodeId uint
+	// 币种名称
+	CoinName string
+	// 币种状态结果
+	SituationResult map[string]string
 }
