@@ -2,5 +2,5 @@ package MasterNodeModel
 
 type MasterNodeServerHeartBeats struct {
 	ServerSituation    MasterNodeServerSituation
-	CoinNodeSituations []CoinNodeSituation
+	CoinNodeSituations []MasterNodeSituation
 }
