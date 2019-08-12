@@ -26,3 +26,12 @@ type MasterNodeSituation struct {
 	// 币种状态结果
 	SituationResult map[string]string
 }
+
+type CoinNodeDelete struct {
+	// 节点在数据库内的编号
+	MasterNodeId uint
+	// 币种名称
+	CoinName string
+	//节点删除文件URL
+	DeleteFileURL string
+}
