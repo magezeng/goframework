@@ -68,6 +68,14 @@ func StructToMap(obj interface{}) map[string]interface{} {
 	return data
 }
 
+func StringToMap(obj string) map[string]interface{} {
+	var data = make(map[string]interface{})
+	err := json.Unmarshal([]byte(obj), &data)
+	if err != nil {
+	}
+	return data
+}
+
 func Float64ToString(arg float64) string {
 	return strconv.FormatFloat(arg, 'f', -1, 64)
 }
