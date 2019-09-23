@@ -1,33 +1,35 @@
 package GormCondition
 
-type GormConditionGroup struct {
-	condition  GormConditionInterface
+type Group struct {
+	condition  Interface
 	nextOption string
 }
 
-func (group *GormConditionGroup) SetNextOption(option string) {
+func (group *Group) SetNextOption(option string) {
 	group.nextOption = option
 }
-func (group *GormConditionGroup) IsNotNull() bool {
+
+func (group *Group) IsNotNull() bool {
 	if group.condition == nil {
 		return false
 	}
 	return group.condition.IsNotNull()
 }
 
-func (group *GormConditionGroup) Content() string {
+func (group *Group) Content() string {
 	return "( " + group.condition.Content() + " )" + " " + group.nextOption + " "
 }
 
-func (group *GormConditionGroup) Or(content string, args ...interface{}) GormConditionInterface {
+func (group *Group) Or(content string, args ...interface{}) Interface {
 	group.SetNextOption("OR")
-	return &GormConditionList{group, &GormCondition{content: content, args: args}}
+	return &List{group, &GormCondition{content: content, args: args}}
 }
 
-func (group *GormConditionGroup) And(content string, args ...interface{}) GormConditionInterface {
+func (group *Group) And(content string, args ...interface{}) Interface {
 	group.SetNextOption("AND")
-	return &GormConditionList{group, &GormCondition{content: content, args: args}}
+	return &List{group, &GormCondition{content: content, args: args}}
 }
-func (group *GormConditionGroup) Group() GormConditionInterface {
+
+func (group *Group) Group() Interface {
 	return group
 }

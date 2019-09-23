@@ -1,10 +1,14 @@
 package GormCondition
 
-type GormConditionInterface interface {
+type Interface interface {
 	Content() string
-	Or(content string, args ...interface{}) GormConditionInterface
-	And(content string, args ...interface{}) GormConditionInterface
-	Group() GormConditionInterface
+	Or(content string, args ...interface{}) Interface
+	And(content string, args ...interface{}) Interface
+	Group() Interface
 	IsNotNull() bool
 	SetNextOption(option string)
+}
+
+func NewGormCondition() Interface {
+	return &GormCondition{}
 }

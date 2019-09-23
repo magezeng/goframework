@@ -1,15 +1,16 @@
 package GormCondition
 
-type GormConditionList []GormConditionInterface
+type List []Interface
 
-func (list *GormConditionList) SetNextOption(option string) {
+func (list *List) SetNextOption(option string) {
 	(*list)[len(*list)].SetNextOption(option)
 }
-func (list *GormConditionList) IsNotNull() bool {
+
+func (list *List) IsNotNull() bool {
 	return len(*list) > 0
 }
 
-func (list *GormConditionList) Content() string {
+func (list *List) Content() string {
 	tempContent := ""
 	for _, condition := range *list {
 		tempContent += condition.Content()
@@ -17,18 +18,18 @@ func (list *GormConditionList) Content() string {
 	return tempContent
 }
 
-func (list *GormConditionList) Or(content string, args ...interface{}) GormConditionInterface {
+func (list *List) Or(content string, args ...interface{}) Interface {
 	(*list)[len(*list)].SetNextOption("OR")
-	tempList := GormConditionList(append(*list, &GormCondition{content: content, args: args}))
+	tempList := append(*list, &GormCondition{content: content, args: args})
 	return &tempList
 }
 
-func (list *GormConditionList) And(content string, args ...interface{}) GormConditionInterface {
+func (list *List) And(content string, args ...interface{}) Interface {
 	(*list)[len(*list)].SetNextOption("AND")
-	tempList := GormConditionList(append(*list, &GormCondition{content: content, args: args}))
+	tempList := append(*list, &GormCondition{content: content, args: args})
 	return &tempList
 }
 
-func (list *GormConditionList) Group() GormConditionInterface {
-	return &GormConditionGroup{condition: list}
+func (list *List) Group() Interface {
+	return &Group{condition: list}
 }

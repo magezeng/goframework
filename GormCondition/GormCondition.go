@@ -21,35 +21,31 @@ func (condition *GormCondition) SetNextOption(option string) {
 
 func (condition *GormCondition) Content() string {
 	//	被填充内容用"=?="进行站位
-	temp_content := condition.content
+	tempContent := condition.content
 	for _, arg := range condition.args {
-		temp_content = strings.Replace(temp_content, "=?=", fmt.Sprint(arg), 1)
+		tempContent = strings.Replace(tempContent, "=?=", fmt.Sprint(arg), 1)
 	}
-	return " " + temp_content + " " + condition.nextOption
+	return " " + tempContent + " " + condition.nextOption
 }
 
-func (condition *GormCondition) Or(content string, args ...interface{}) GormConditionInterface {
+func (condition *GormCondition) Or(content string, args ...interface{}) Interface {
 	if condition.IsNotNull() {
 		condition.SetNextOption("OR")
-		return &GormConditionList{condition, &GormCondition{content: content, args: args}}
+		return &List{condition, &GormCondition{content: content, args: args}}
 	} else {
 		return &GormCondition{content: content, args: args}
 	}
 }
 
-func (condition *GormCondition) And(content string, args ...interface{}) GormConditionInterface {
+func (condition *GormCondition) And(content string, args ...interface{}) Interface {
 	if condition.IsNotNull() {
 		condition.SetNextOption("AND")
-		return &GormConditionList{condition, &GormCondition{content: content, args: args}}
+		return &List{condition, &GormCondition{content: content, args: args}}
 	} else {
 		return &GormCondition{content: content, args: args}
 	}
 }
 
-func (condition *GormCondition) Group() GormConditionInterface {
-	return &GormConditionGroup{condition: condition}
-}
-
-func NewGormCondition() GormConditionInterface {
-	return &GormCondition{}
+func (condition *GormCondition) Group() Interface {
+	return &Group{condition: condition}
 }
