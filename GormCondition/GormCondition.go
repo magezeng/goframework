@@ -23,7 +23,7 @@ func (condition *GormCondition) Content() string {
 	//	被填充内容用"=?="进行站位
 	tempContent := condition.content
 	for _, arg := range condition.args {
-		tempContent = strings.Replace(tempContent, "=?=", fmt.Sprint(arg), 1)
+		tempContent = strings.Replace(tempContent, "?", fmt.Sprint(arg), 1)
 	}
 	return " " + tempContent + " " + condition.nextOption
 }
