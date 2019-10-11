@@ -1,9 +1,11 @@
 package ScopeConditionType
 
+type ScopeConditionType string
+
 const (
-	Equal   string = "Equal"
-	Scope          = "Scope"
-	Contain        = "Contain"
-	Less           = "Less"
-	Greater        = "Greater"
+	Equal   ScopeConditionType = "Equal"
+	Scope                      = "Scope"
+	Contain                    = "Contain"
+	Less                       = "Less"
+	Greater                    = "Greater"
 )
