@@ -57,6 +57,15 @@ func StringToInt64(arg string) int64 {
 	}
 }
 
+func StringToFloat64(arg string) float64 {
+	value, err := strconv.ParseFloat(arg, 64)
+	if err != nil {
+		return 0
+	} else {
+		return value
+	}
+}
+
 func StructToMap(obj interface{}) map[string]interface{} {
 	t := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
