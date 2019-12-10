@@ -1,6 +1,6 @@
 package TipuQuantCenter
 
 type QuantCenterServerHeartBeats struct {
-	ControlTerminalSituation      ControlTerminal
-	StrategyGroupRuntimeSituation []StrategyGroupRuntime
+	ControlTerminalSituation       ControlTerminal
+	StrategyGroupRuntimeSituations []StrategyGroupRuntime
 }
