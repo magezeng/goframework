@@ -7,3 +7,9 @@ type ControlTerminal struct {
 	MemUsage  float32 `json:"mem_usage"`
 	DiskUsage float32 `json:"disk_usage"`
 }
+
+type Command struct {
+	Key  string
+	Path string
+	Args []string
+}
