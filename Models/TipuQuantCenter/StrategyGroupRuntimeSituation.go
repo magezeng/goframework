@@ -1,8 +1,8 @@
 package TipuQuantCenter
 
 type StrategyGroupRuntime struct {
-	StrategyGroupId uint
-	Status          bool
-	CPUUsage        float32
-	MemUsage        float32
+	StrategyGroupId uint    `json:"strategy_group_id"`
+	Status          *bool   `json:"status"`
+	CPUUsage        float32 `json:"cpu_usage"`
+	MemUsage        float32 `json:"mem_usage"`
 }
